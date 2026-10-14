@@ -25,6 +25,9 @@ interface DashboardData {
   range: { from: string; to: string };
   kpi: {
     net_gross_in_range: number;
+    net_collection_in_range: number;
+    driver_commission_in_range: number;
+    conductor_commission_in_range: number;
     passenger_count_in_range: number;
     passenger_growth_pct: string | null;
     bus_utilisation_rate: number;
@@ -33,6 +36,7 @@ interface DashboardData {
     remittance_approved: number;
     remittance_total: number;
     remittance_pending: number;
+    remittance_rejected: number;
   };
   daily_passengers: { date: string; total: string }[];
   route_profit: {
@@ -65,7 +69,6 @@ interface ForecastData {
   selector: 'app-dashboard',
   imports: [CurrencyPipe, DecimalPipe],
   templateUrl: './dashboard.html',
-  styleUrl: './dashboard.css',
 })
 export class Dashboard implements OnInit {
   private http = inject(HttpClient);
@@ -192,6 +195,20 @@ export class Dashboard implements OnInit {
     return Math.round((d.kpi.remittance_pending / d.kpi.remittance_total) * 100);
   });
 
+  remittanceRejectedPct = computed(() => {
+    const d = this.dash();
+    if (!d || !d.kpi.remittance_total) return 0;
+    return Math.round((d.kpi.remittance_rejected / d.kpi.remittance_total) * 100);
+  });
+
+  /** Donut segments: approved, then rejected, then pending. Grey when there are none. */
+  remittanceDonutGradient = computed(() => {
+    if (!this.dash()?.kpi.remittance_total) return '#f3f4f6';
+    const a = this.remittanceApprovedPct();
+    const b = a + this.remittanceRejectedPct();
+    return `conic-gradient(#22c55e 0% ${a}%, #ef4444 ${a}% ${b}%, #f59e0b ${b}% 100%)`;
+  });
+
   dailyPassengerBars = computed(() => {
     const d = this.dash();
     if (!d) return [];
@@ -232,7 +249,8 @@ export class Dashboard implements OnInit {
     for (const row of d.peak_hours) slots[Number(row.hour)] = Number(row.ticket_count);
     return slots.slice(6, 22);
   });
-  peakHourLabels = ['6', '8', '10', '12', '14', '16', '18', '20'];
+  // Evenly spaced along the chart's 6 AM – 9 PM axis.
+  peakHourLabels = [6, 9, 12, 15, 18, 21];
 
   remittanceTrendValues = computed(() =>
     (this.dash()?.remittance_trend ?? []).map((r) => Number(r.net_collection)),

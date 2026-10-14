@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { AlertService } from '../../../../core/services/alert.service';
 import { environment } from '../../../../../environments/environment';
+import { RemittanceTripsTable } from '../../../../shared/components/remittance-trips-table/remittance-trips-table';
 
 interface RemittanceDetail {
   id: number;
@@ -43,7 +44,7 @@ interface RemittanceDetail {
 
 @Component({
   selector: 'app-remittance-detail',
-  imports: [RouterLink, CurrencyPipe, DatePipe],
+  imports: [RouterLink, CurrencyPipe, DatePipe, RemittanceTripsTable],
   templateUrl: './remittance-detail.html',
 })
 export class RemittanceDetailPage implements OnInit {

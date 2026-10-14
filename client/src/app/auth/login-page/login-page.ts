@@ -8,7 +8,6 @@ import { AlertService } from '../../core/services/alert.service';
   selector: 'app-login-page',
   imports: [ReactiveFormsModule],
   templateUrl: './login-page.html',
-  styleUrl: './login-page.css',
 })
 export class LoginPage {
   loginForm: FormGroup;

@@ -88,6 +88,12 @@ module.exports = (sequelize) => {
         type: DataTypes.DATE,
         allowNull: false,
       },
+      // Set when the conductor corrects and resubmits a rejected remittance. The status
+      // goes back to "submitted"; this is what marks it as "Updated" for the audit teller.
+      resubmitted_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
       approved_by: {
         type: DataTypes.INTEGER,
         allowNull: true,

@@ -1,4 +1,5 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
+import { NumericInput } from '../../../../shared/directives/numeric-input.directive';
 import { HttpClient } from '@angular/common/http';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AlertService } from '../../../../core/services/alert.service';
@@ -19,9 +20,8 @@ interface FareSettingsData {
 
 @Component({
   selector: 'app-fare-settings',
-  imports: [ReactiveFormsModule],
+  imports: [NumericInput, ReactiveFormsModule],
   templateUrl: './fare-settings.html',
-  styleUrl: './fare-settings.css',
 })
 export class FareSettings implements OnInit {
   private http = inject(HttpClient);

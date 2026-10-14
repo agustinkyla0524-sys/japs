@@ -14,9 +14,34 @@ const {
   sequelize,
 } = require("../models");
 const EXPENSE_TYPES = require("../models/expenseTypes");
-const { fullName, sendRemittanceSubmittedEmail } = require("../config/mailer");
+const {
+  fullName,
+  sendRemittanceSubmittedEmail,
+  sendRemittanceReceiptEmail,
+} = require("../config/mailer");
+
+const { findRemittanceDetail } = require("../services/remittance/findRemittanceDetail");
 
 const notify = (promise) => promise.catch((err) => console.error("Email notification failed:", err));
+
+// Emails the conductor a confirmation + summary of the remittance they just (re)submitted.
+const notifyConductorOfSubmission = (remittance, isResubmission) =>
+  notify(
+    (async () => {
+      const [bus, conductor] = await Promise.all([
+        BusModel.findByPk(remittance.bus_id),
+        User.findByPk(remittance.conductor_id),
+      ]);
+      if (!conductor?.email) return;
+      await sendRemittanceReceiptEmail({
+        to: conductor.email,
+        name: fullName(conductor),
+        busLabel: bus?.bus_number ?? String(remittance.bus_id),
+        remittance,
+        isResubmission,
+      });
+    })(),
+  );
 
 // GET /api/conductor/trips
 // Returns completed unremitted trips for a bus on a date (for remittance submission).
@@ -865,6 +890,7 @@ const submitRemittance = async (req, res) => {
 
     await transaction.commit();
 
+    notifyConductorOfSubmission(remittance, false);
     notify(
       (async () => {
         const [bus, conductor, reviewers] = await Promise.all([
@@ -889,6 +915,125 @@ const submitRemittance = async (req, res) => {
   } catch (error) {
     await transaction.rollback();
     console.error("Error submitting remittance:", error);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+// PUT /api/conductor/remittances/:id
+// Correct and resubmit a rejected remittance. The same record goes back to the audit
+// teller (status "submitted", resubmitted_at set) — no second remittance is created and
+// its trips stay linked to it. Gross income is left as is: it comes from those trips.
+// Body: { expenses: [{ expense_type, amount }], driver_commission, conductor_commission,
+// bonus_allowance, other_deductions, cash_deposit, driver_officer_share,
+// conductor_officer_share }.
+const resubmitRemittance = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const conductorId = req.user.id;
+    const remittance = await Remittance.findOne({
+      where: { id: req.params.id, conductor_id: conductorId },
+      transaction,
+    });
+    if (!remittance) {
+      await transaction.rollback();
+      return res.status(404).json({ message: "Remittance not found." });
+    }
+    if (remittance.status !== "rejected") {
+      await transaction.rollback();
+      return res
+        .status(400)
+        .json({ message: "Only a rejected remittance can be edited and resubmitted." });
+    }
+
+    const expenses = Array.isArray(req.body.expenses) ? req.body.expenses : [];
+    const amountFields = [
+      "driver_commission",
+      "conductor_commission",
+      "bonus_allowance",
+      "other_deductions",
+      "cash_deposit",
+      "driver_officer_share",
+      "conductor_officer_share",
+    ];
+    const amounts = {};
+    for (const field of amountFields) {
+      amounts[field] = Number(req.body[field] ?? 0);
+    }
+    const isValidAmount = (n) => Number.isFinite(n) && n >= 0;
+    const validExpenses = expenses.every(
+      (e) => EXPENSE_TYPES.includes(e?.expense_type) && isValidAmount(Number(e.amount)),
+    );
+    if (!validExpenses || !Object.values(amounts).every(isValidAmount)) {
+      await transaction.rollback();
+      return res.status(400).json({ message: "Enter valid amounts (0 or more)." });
+    }
+
+    const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+    const netGross = Number(remittance.gross_income) - totalExpenses;
+    const totalLess =
+      amounts.driver_commission +
+      amounts.conductor_commission +
+      amounts.bonus_allowance +
+      amounts.other_deductions +
+      amounts.cash_deposit;
+    const netCollection = netGross - totalLess;
+
+    await remittance.update(
+      {
+        ...amounts,
+        total_expenses: totalExpenses,
+        net_gross: netGross,
+        total_less: totalLess,
+        net_collection: netCollection,
+        status: "submitted",
+        resubmitted_at: new Date(),
+        approved_by: null,
+        approved_at: null,
+      },
+      { transaction },
+    );
+
+    await RemittanceExpense.destroy({ where: { remittance_id: remittance.id }, transaction });
+    for (const exp of expenses) {
+      if (Number(exp.amount) > 0) {
+        await RemittanceExpense.create(
+          {
+            remittance_id: remittance.id,
+            expense_type: exp.expense_type,
+            amount: exp.amount,
+          },
+          { transaction },
+        );
+      }
+    }
+
+    await transaction.commit();
+
+    notifyConductorOfSubmission(remittance, true);
+    notify(
+      (async () => {
+        const [bus, conductor, reviewers] = await Promise.all([
+          BusModel.findByPk(remittance.bus_id),
+          User.findByPk(conductorId),
+          User.findAll({ where: { role: ["owner", "admin_staff", "audit_teller"], is_active: true } }),
+        ]);
+        for (const reviewer of reviewers) {
+          await sendRemittanceSubmittedEmail({
+            to: reviewer.email,
+            conductorName: conductor ? fullName(conductor) : "A conductor",
+            busLabel: bus?.bus_number ?? String(remittance.bus_id),
+            date: remittance.date,
+            netCollection,
+            isResubmission: true,
+          });
+        }
+      })(),
+    );
+
+    return res.json(remittance);
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Error resubmitting remittance:", error);
     return res.status(500).json({ message: "Internal server error." });
   }
 };
@@ -942,6 +1087,21 @@ const getRemittances = async (req, res) => {
   }
 };
 
+// GET /api/conductor/remittances/:id — one of the conductor's remittances, with tickets.
+const getRemittanceById = async (req, res) => {
+  try {
+    const remittance = await findRemittanceDetail({
+      id: req.params.id,
+      conductor_id: req.user.id,
+    });
+    if (!remittance) return res.status(404).json({ message: "Remittance not found." });
+    return res.json(remittance);
+  } catch (error) {
+    console.error("Error fetching remittance:", error);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+
 module.exports = {
   getAssignedTrips,
   updateTripStatus,
@@ -951,7 +1111,9 @@ module.exports = {
   printTicket,
   getTickets,
   submitRemittance,
+  resubmitRemittance,
   getRemittances,
+  getRemittanceById,
   createExpense,
   getExpenses,
   deleteExpense,

@@ -3,6 +3,10 @@ import { HttpClient } from '@angular/common/http';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { environment } from '../../../../../environments/environment';
 import { TablePagination } from '../../../../shared/components/table-pagination/table-pagination';
+import {
+  RemittanceTripsTable,
+  RemittanceTicket,
+} from '../../../../shared/components/remittance-trips-table/remittance-trips-table';
 
 interface Remittance {
   id: number;
@@ -37,6 +41,8 @@ interface Remittance {
     ticket_number_start: string | null;
     ticket_number_end: string | null;
     Route: { origin: string; destination: string } | null;
+    // Loaded when the details panel is opened.
+    Tickets?: RemittanceTicket[];
   }[];
 }
 
@@ -46,7 +52,7 @@ type SortField = 'date' | 'submitted_at' | 'net_collection' | 'status';
 // approve, or reject; this mirrors the conductor list view minus every write action.
 @Component({
   selector: 'app-driver-remittances',
-  imports: [CurrencyPipe, DatePipe, TablePagination],
+  imports: [CurrencyPipe, DatePipe, TablePagination, RemittanceTripsTable],
   templateUrl: './remittances.html',
 })
 export class DriverRemittancesPage implements OnInit {
@@ -180,6 +186,19 @@ export class DriverRemittancesPage implements OnInit {
     this.pageSize.set(size);
     this.currentPage.set(1);
   }
+  /** Opens the details panel, then loads the tickets issued on each of its trips. */
+  openDetails(r: Remittance): void {
+    this.selected.set(r);
+    this.http
+      .get<Remittance>(`${this.API}/remittances/${r.id}`, { withCredentials: true })
+      .subscribe({
+        next: (detail) => {
+          const current = this.selected();
+          if (current?.id === r.id) this.selected.set({ ...current, Trips: detail.Trips });
+        },
+      });
+  }
+
   getStatusBadge(status: string): string {
     return (
       (

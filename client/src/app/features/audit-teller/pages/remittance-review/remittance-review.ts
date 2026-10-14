@@ -1,4 +1,5 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { NumericInput } from '../../../../shared/directives/numeric-input.directive';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CurrencyPipe, DatePipe } from '@angular/common';
@@ -30,6 +31,7 @@ interface RemittanceDetail {
   teller_remarks: string | null;
   status: 'submitted' | 'approved' | 'rejected';
   submitted_at: string;
+  resubmitted_at?: string | null;
   approved_at: string | null;
   conductor: { id: number; first_name: string; last_name: string; employee_id: string };
   driver: { id: number; first_name: string; last_name: string; employee_id: string };
@@ -79,7 +81,7 @@ interface EditForm {
 
 @Component({
   selector: 'app-remittance-review',
-  imports: [RouterLink, CurrencyPipe, DatePipe, FormsModule],
+  imports: [NumericInput, RouterLink, CurrencyPipe, DatePipe, FormsModule],
   templateUrl: './remittance-review.html',
 })
 export class RemittanceReviewPage implements OnInit {

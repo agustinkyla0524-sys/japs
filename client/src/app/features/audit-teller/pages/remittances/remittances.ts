@@ -15,6 +15,7 @@ interface Remittance {
   total_less: number;
   net_collection: number;
   status: 'submitted' | 'approved' | 'rejected';
+  resubmitted_at?: string | null;
   submitted_at: string;
   approved_at: string | null;
   conductor: {
@@ -43,7 +44,6 @@ type SortField = 'date' | 'submitted_at' | 'net_collection' | 'status';
   selector: 'app-remittances',
   imports: [RouterLink, CurrencyPipe, DatePipe, TablePagination],
   templateUrl: './remittances.html',
-  styleUrl: './remittances.css',
 })
 export class RemittancesPage implements OnInit {
   private http = inject(HttpClient);

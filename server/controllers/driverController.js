@@ -1,4 +1,5 @@
 const { Trip, BusModel, Route, User, Remittance, RemittanceExpense } = require('../models');
+const { findRemittanceDetail } = require('../services/remittance/findRemittanceDetail');
 
 // GET /api/driver/trips
 // Returns all trips assigned to the logged-in driver
@@ -72,7 +73,23 @@ const getRemittances = async (req, res) => {
   }
 };
 
+// GET /api/driver/remittances/:id — one of the driver's remittances, with tickets.
+const getRemittanceById = async (req, res) => {
+  try {
+    const remittance = await findRemittanceDetail({
+      id: req.params.id,
+      driver_id: req.user.id,
+    });
+    if (!remittance) return res.status(404).json({ message: 'Remittance not found.' });
+    return res.json(remittance);
+  } catch (error) {
+    console.error('Error fetching driver remittance:', error);
+    return res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
 module.exports = {
   getAssignedTrips,
   getRemittances,
+  getRemittanceById,
 };

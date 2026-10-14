@@ -5,7 +5,7 @@
  *
  *   receipt markup/styles from ticketing.html -> off-screen copy 384px wide
  *   -> html2canvas-pro (scale 1) -> 1-bit bitmap (luminance < 200 = black)
- *   -> ESC @, ESC a 1, GS v 0 raster image, ESC d 8
+ *   -> ESC @ + 300 ms wake-up pause, then ESC @, ESC a 1, GS v 0 raster image, ESC d 8
  *   -> written to the printer's first writable characteristic in 100-byte chunks, 50 ms apart.
  *
  * Nothing is rendered or sent until a printer is connected.
@@ -30,6 +30,8 @@ const GS = 0x1d;
 const PRINTER_WIDTH_DOTS = 384;
 const CHUNK_SIZE = 100;
 const CHUNK_DELAY_MS = 50;
+// Pause after the wake-up/initialize command, before any image data (same as the web app).
+const WAKE_DELAY_MS = 300;
 const CONNECT_TIMEOUT_MS = 15000;
 
 const LOGO_PATH = path.resolve(__dirname, '../../client/public/assets/images/JAPS (black).png');
@@ -169,16 +171,14 @@ function buildReceiptHtml(t) {
     <div id="receiptContent" class="bg-white px-2 py-4 font-mono text-xl font-medium text-black space-y-3 max-h-[70vh] overflow-y-auto">
       <div class="text-center space-y-1">
         <img src="${logo}" alt="JAPS" class="h-14 mx-auto" />
-        <h4 class="text-2xl font-bold tracking-wider">JAPS TRANSIT</h4>
-        <p class="text-lg">Bus Operations &amp; Ticketing</p>
-        <p class="text-lg">Date: ${e(formatMediumDate(new Date()))}</p>
+        <h4 class="text-2xl">JAPS Transport Services</h4>
+        <p class="text-lg">${e(formatMediumDate(new Date()))}</p>
       </div>
 
       <div class="border-t-2 border-dashed border-black"></div>
 
       <div class="space-y-1">
         <div class="flex justify-between gap-2 font-bold text-2xl"><span>TICKET NO:</span><span>#${e(t.ticketNumber)}</span></div>
-        <div class="flex justify-between gap-2"><span>BUS NO:</span><span class="text-right">${e(t.bus?.bus_number)}</span></div>
         <div class="flex justify-between gap-2"><span>PLATE NO:</span><span class="text-right">${e(t.bus?.plate_number)}</span></div>
         <div class="flex justify-between gap-2"><span>FROM:</span><span class="text-right font-bold">${e(t.boardingPoint)}</span></div>
         <div class="flex justify-between gap-2"><span>TO:</span><span class="text-right font-bold">${e(t.droppingPoint)}</span></div>
@@ -187,7 +187,6 @@ function buildReceiptHtml(t) {
       <div class="border-t-2 border-dashed border-black"></div>
 
       <div class="space-y-1">
-        <div class="flex justify-between gap-2"><span>Distance:</span><span class="text-right">${e(t.distance)} km</span></div>
         ${t.passengers
           .map(
             (l) =>
@@ -198,15 +197,11 @@ function buildReceiptHtml(t) {
           <span>PASSENGERS:</span><span class="text-right">${e(t.passengerCount)}</span>
         </div>
         <div class="flex justify-between gap-2 font-bold text-2xl pt-2 border-t-2 border-black">
-          <span>TOTAL AMOUNT:</span><span class="text-right">₱${formatMoney(t.fare)}</span>
+          <span>TOTAL:</span><span class="text-right">₱${formatMoney(t.fare)}</span>
         </div>
       </div>
 
       <div class="border-t-2 border-dashed border-black"></div>
-
-      <div class="flex items-center justify-center">
-        <span class="text-lg font-bold tracking-widest">JAPS-${e(t.ticketNumber)}</span>
-      </div>
 
       <div class="text-center text-lg">
         <p>Thank you for riding JAPS Transit!</p>
@@ -429,6 +424,8 @@ function createPrinterLink(noble, nameFilter) {
 async function sendPayload({ peripheral, characteristic }, payload) {
   // Web Bluetooth's writeValue() writes with response when the characteristic supports it.
   const withoutResponse = !characteristic.properties.includes('write');
+  await characteristic.writeAsync(Buffer.from([ESC, 0x40]), withoutResponse);
+  await sleep(WAKE_DELAY_MS);
   for (let i = 0; i < payload.length; i += CHUNK_SIZE) {
     if (peripheral.state !== 'connected') throw new Error('Printer disconnected while printing.');
     await characteristic.writeAsync(payload.subarray(i, i + CHUNK_SIZE), withoutResponse);

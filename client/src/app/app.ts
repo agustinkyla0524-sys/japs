@@ -9,7 +9,6 @@ const isNumberInput = (el: EventTarget | null): el is HTMLInputElement =>
   selector: 'app-root',
   imports: [RouterOutlet, AlertModal],
   templateUrl: './app.html',
-  styleUrl: './app.css',
 })
 export class App {
   protected readonly title = signal('client');

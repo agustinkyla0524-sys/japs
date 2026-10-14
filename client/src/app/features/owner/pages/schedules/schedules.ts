@@ -50,7 +50,6 @@ export interface TripRow {
   selector: 'app-schedules',
   imports: [FormsModule, DatePipe],
   templateUrl: './schedules.html',
-  styleUrl: './schedules.css',
 })
 export class Schedules implements OnInit {
   private http = inject(HttpClient);
@@ -67,8 +66,8 @@ export class Schedules implements OnInit {
   buses = signal<ScheduleBus[]>([]);
   routes = signal<ScheduleRoute[]>([]);
 
-  startDate = signal<string>(this.tomorrow());
-  endDate = signal<string>(this.tomorrow());
+  startDate = signal<string>(this.today());
+  endDate = signal<string>(this.today());
 
   filterBus = signal('');
   filterDriver = signal('');
@@ -109,7 +108,7 @@ export class Schedules implements OnInit {
   // ── Modal state ──
   showModal = signal(false);
   selectedBus = signal<ScheduleBus | null>(null);
-  scheduleDate = signal<string>(this.tomorrow());
+  scheduleDate = signal<string>(this.today());
 
   // The list of trip rows being built
   tripRows = signal<TripRow[]>([]);
@@ -118,10 +117,11 @@ export class Schedules implements OnInit {
   deletingTrip = signal<ScheduleTrip | null>(null);
   showDeleteModal = signal(false);
 
-  private tomorrow(): string {
+  /** Today's date (YYYY-MM-DD) in the browser's local time. */
+  private today(): string {
     const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().split('T')[0];
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   }
 
   get dateLabel(): string {

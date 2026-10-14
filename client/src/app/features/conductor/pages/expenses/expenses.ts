@@ -1,4 +1,5 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { NumericInput } from '../../../../shared/directives/numeric-input.directive';
 import { HttpClient } from '@angular/common/http';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CurrencyPipe, DatePipe } from '@angular/common';
@@ -52,7 +53,7 @@ const localDate = (d: Date | string): string => {
 
 @Component({
   selector: 'app-conductor-expenses',
-  imports: [ReactiveFormsModule, CurrencyPipe, DatePipe],
+  imports: [NumericInput, ReactiveFormsModule, CurrencyPipe, DatePipe],
   templateUrl: './expenses.html',
 })
 export class ConductorExpensesPage implements OnInit {

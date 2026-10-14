@@ -33,7 +33,13 @@
         class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold capitalize"
         [class]="getStatusBadge(remittance()!.status)"
       >
-        {{ remittance()!.status === 'submitted' ? 'Pending Review' : remittance()!.status }}
+        {{
+          remittance()!.status === 'submitted'
+            ? remittance()!.resubmitted_at
+              ? 'Updated — Pending Review'
+              : 'Pending Review'
+            : remittance()!.status
+        }}
       </span>
       <!-- Edit toggle — only for pending -->
       @if (remittance()!.status === 'submitted' && !editMode()) {
@@ -76,6 +82,17 @@
       You are editing this remittance. Fields highlighted in
       <span class="font-semibold text-amber-600">amber</span> have been changed from the original
       submission.
+    </div>
+  }
+  <!-- Resubmission notice -->
+  @if (remittance()!.status === 'submitted' && remittance()!.resubmitted_at) {
+    <div
+      class="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-3 rounded-lg mb-6"
+    >
+      <i class="pi pi-refresh"></i>
+      The conductor updated and resubmitted this remittance on
+      {{ remittance()!.resubmitted_at | date: 'medium' }}. It is ready to be approved or rejected
+      again.
     </div>
   }
   <!-- Teller remarks banner (view mode) -->
@@ -155,6 +172,7 @@
           </div>
         }
 
+        <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
@@ -255,6 +273,7 @@
             }
           </tbody>
         </table>
+        </div>
       </div>
 
       <!-- Expenses -->

@@ -1,4 +1,5 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { NumericInput } from '../../../../shared/directives/numeric-input.directive';
 import { HttpClient } from '@angular/common/http';
 import { Observable, firstValueFrom } from 'rxjs';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -29,9 +30,8 @@ export interface RouteStopPoint {
 
 @Component({
   selector: 'app-routes',
-  imports: [ReactiveFormsModule, TablePagination],
+  imports: [NumericInput, ReactiveFormsModule, TablePagination],
   templateUrl: './routes.html',
-  styleUrl: './routes.css',
 })
 
 

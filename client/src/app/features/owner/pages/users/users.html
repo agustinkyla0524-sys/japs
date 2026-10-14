@@ -64,6 +64,7 @@
       <p class="text-sm">No users found.</p>
     </div>
   } @else {
+    <div class="overflow-x-auto">
     <table class="w-full text-sm">
       <thead class="bg-gray-50 border-b border-gray-200">
         <tr>
@@ -168,6 +169,7 @@
         }
       </tbody>
     </table>
+    </div>
 
     <app-table-pagination
       [currentPage]="currentPage()"
@@ -210,6 +212,7 @@
             </label>
             <input
               formControlName="employee_id"
+              appAllowedChars="code"
               type="text"
               placeholder="EMP-001"
               class="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#1E5AAA] focus:ring-2 focus:ring-[#1E5AAA]/20 border-gray-300"
@@ -242,6 +245,7 @@
             </label>
             <input
               formControlName="first_name"
+              appAllowedChars="name"
               type="text"
               placeholder="Juan"
               class="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#1E5AAA] focus:ring-2 focus:ring-[#1E5AAA]/20 border-gray-300"
@@ -257,6 +261,7 @@
             <label class="block text-xs font-medium text-gray-600 mb-1">Middle Name</label>
             <input
               formControlName="middle_name"
+              appAllowedChars="name"
               type="text"
               placeholder="Santos"
               class="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#1E5AAA] focus:ring-2 focus:ring-[#1E5AAA]/20 border-gray-300"
@@ -270,6 +275,7 @@
             </label>
             <input
               formControlName="last_name"
+              appAllowedChars="name"
               type="text"
               placeholder="Dela Cruz"
               class="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#1E5AAA] focus:ring-2 focus:ring-[#1E5AAA]/20 border-gray-300"
@@ -316,10 +322,15 @@
             <label class="block text-xs font-medium text-gray-600 mb-1">Contact Number</label>
             <input
               formControlName="contact_number"
+              appAllowedChars="digits" inputmode="numeric" maxlength="11"
               type="text"
               placeholder="09171234567"
               class="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#1E5AAA] focus:ring-2 focus:ring-[#1E5AAA]/20 border-gray-300"
+              [class.border-red-400]="fieldError('contact_number')"
             />
+            @if (fieldError('contact_number')) {
+              <p class="text-red-500 text-xs mt-0.5">Enter an 11-digit mobile number</p>
+            }
           </div>
 
           <!-- Username -->
@@ -329,6 +340,7 @@
             </label>
             <input
               formControlName="username"
+              appAllowedChars="username"
               type="text"
               placeholder="juan_dc"
               class="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#1E5AAA] focus:ring-2 focus:ring-[#1E5AAA]/20 border-gray-300"

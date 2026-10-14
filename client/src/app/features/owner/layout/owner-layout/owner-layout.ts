@@ -14,7 +14,6 @@ interface NavItem {
   selector: 'app-owner-layout',
   imports: [RouterOutlet, RouterLink, RouterLinkActive, ConfirmModal],
   templateUrl: './owner-layout.html',
-  styleUrl: './owner-layout.css',
 })
 export class OwnerLayout {
   private auth = inject(AuthService);

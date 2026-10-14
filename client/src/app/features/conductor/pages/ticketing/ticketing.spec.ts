@@ -109,7 +109,7 @@ describe('TicketingPage', () => {
 
     expect(printTicketImage).toHaveBeenCalledTimes(1);
     const receiptEl = printTicketImage.mock.calls[0][0] as HTMLElement;
-    expect(receiptEl.textContent).toContain('BUS-01');
+    expect(receiptEl.textContent).toContain('ABC-123');
     expect(receiptEl.textContent).toContain('Manila');
     expect(receiptEl.textContent).toContain('Student ×1');
     expect(receiptEl.textContent).toContain('Senior Citizen ×1');

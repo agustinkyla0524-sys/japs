@@ -1,4 +1,5 @@
 import { Component, ElementRef, inject, signal, computed, viewChild, OnInit } from '@angular/core';
+import { NumericInput } from '../../../../shared/directives/numeric-input.directive';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -72,7 +73,7 @@ const DEFAULT_QUANTITIES: Record<PassengerCategory, number> = {
 
 @Component({
   selector: 'app-ticketing',
-  imports: [ReactiveFormsModule, CurrencyPipe, DatePipe, DecimalPipe],
+  imports: [NumericInput, ReactiveFormsModule, CurrencyPipe, DatePipe, DecimalPipe],
   templateUrl: './ticketing.html',
   styleUrl: './ticketing.css',
 })
@@ -95,6 +96,8 @@ export class TicketingPage implements OnInit {
   passengerCounts = signal<PassengerCount[]>([]);
   ticketForm: FormGroup;
   isPrinting = signal(false);
+  /** True while a receipt is being sent to the thermal printer. */
+  isSendingToPrinter = signal(false);
 
   readonly CATEGORIES = PASSENGER_CATEGORIES;
   // Mirror of the form's value as a signal so fares below can be computed reactively.
@@ -305,17 +308,7 @@ export class TicketingPage implements OnInit {
 
           // Wait for the modal (and its receipt content ref) to actually render.
           await this.waitForRender();
-          const receiptEl = this.receiptContentRef()?.nativeElement;
-          if (receiptEl) {
-            this.printerSetup.printTicketImage(receiptEl).catch((err) => {
-              this.alertService.error(
-                'Printer Error',
-                err instanceof Error
-                  ? err.message
-                  : 'Ticket saved, but printing failed. Check the printer connection.',
-              );
-            });
-          }
+          this.sendReceiptToPrinter();
 
           this.alertService.success('Success', 'Ticket generated and sent to printing terminal.');
 
@@ -342,8 +335,28 @@ export class TicketingPage implements OnInit {
     this.showPrintModal.set(false);
   }
 
-  triggerBrowserPrint(): void {
-    window.print();
+  /** Prints another copy of the receipt shown in the modal on the thermal printer. */
+  reprintReceipt(): void {
+    this.sendReceiptToPrinter();
+  }
+
+  /** Sends the receipt currently rendered in the modal to the thermal printer. */
+  private sendReceiptToPrinter(): void {
+    const receiptEl = this.receiptContentRef()?.nativeElement;
+    if (!receiptEl) return;
+
+    this.isSendingToPrinter.set(true);
+    this.printerSetup
+      .printTicketImage(receiptEl)
+      .catch((err) => {
+        this.alertService.error(
+          'Printer Error',
+          err instanceof Error
+            ? err.message
+            : 'Ticket saved, but printing failed. Check the printer connection.',
+        );
+      })
+      .finally(() => this.isSendingToPrinter.set(false));
   }
 
   getDiscountPercent(category: string, settings: FareSettings | null = this.fareSettings()): number {

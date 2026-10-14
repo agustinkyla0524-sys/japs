@@ -335,9 +335,8 @@
         <!-- Store Header -->
         <div class="text-center space-y-1">
           <img src="assets/images/JAPS (black).png" alt="JAPS" class="h-14 mx-auto" />
-          <h4 class="text-2xl font-bold tracking-wider">JAPS TRANSIT</h4>
-          <p class="text-lg">Bus Operations & Ticketing</p>
-          <p class="text-lg">Date: {{ lastPrintedTicket()?.date | date: 'medium' }}</p>
+          <h4 class="text-2xl">JAPS Transport Services</h4>
+          <p class="text-lg">{{ lastPrintedTicket()?.date | date: 'medium' }}</p>
         </div>
 
         <div class="border-t-2 border-dashed border-black"></div>
@@ -347,10 +346,6 @@
           <div class="flex justify-between gap-2 font-bold text-2xl">
             <span>TICKET NO:</span>
             <span>#{{ lastPrintedTicket()?.ticketNumber }}</span>
-          </div>
-          <div class="flex justify-between gap-2">
-            <span>BUS NO:</span>
-            <span class="text-right">{{ lastPrintedTicket()?.bus?.bus_number }}</span>
           </div>
           <div class="flex justify-between gap-2">
             <span>PLATE NO:</span>
@@ -370,10 +365,6 @@
 
         <!-- Fare details -->
         <div class="space-y-1">
-          <div class="flex justify-between gap-2">
-            <span>Distance:</span>
-            <span class="text-right">{{ lastPrintedTicket()?.distance }} km</span>
-          </div>
           @for (line of lastPrintedTicket()?.passengers ?? []; track line.category) {
             <div class="flex justify-between gap-2">
               <span>{{ getCategoryLabel(line.category) }} ×{{ line.quantity }}</span>
@@ -385,20 +376,12 @@
             <span class="text-right">{{ lastPrintedTicket()?.passengerCount }}</span>
           </div>
           <div class="flex justify-between gap-2 font-bold text-2xl pt-2 border-t-2 border-black">
-            <span>TOTAL AMOUNT:</span>
+            <span>TOTAL:</span>
             <span class="text-right">₱{{ lastPrintedTicket()?.fare | number: '1.2-2' }}</span>
           </div>
         </div>
 
         <div class="border-t-2 border-dashed border-black"></div>
-
-        <!-- Ticket validation code (kept as plain text — a solid-black barcode
-             graphic here would add printed area/data for little payoff) -->
-        <div class="flex items-center justify-center">
-          <span class="text-lg font-bold tracking-widest"
-            >JAPS-{{ lastPrintedTicket()?.ticketNumber }}</span
-          >
-        </div>
 
         <div class="text-center text-lg">
           <p>Thank you for riding JAPS Transit!</p>
@@ -421,10 +404,11 @@
           Dismiss
         </button>
         <button
-          (click)="triggerBrowserPrint()"
-          class="px-5 py-2 text-xs font-bold bg-[#0F2942] hover:bg-[#1C3E61] text-white rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+          (click)="reprintReceipt()"
+          [disabled]="isSendingToPrinter()"
+          class="px-5 py-2 text-xs font-bold bg-[#0F2942] hover:bg-[#1C3E61] text-white rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <i class="pi pi-print"></i> Print Receipt
+          <i class="pi pi-print"></i> {{ isSendingToPrinter() ? 'Printing...' : 'Reprint Receipt' }}
         </button>
       </div>
     </div>

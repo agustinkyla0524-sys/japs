@@ -13,7 +13,6 @@ interface NavItem {
   selector: 'app-audit-teller-layout',
   imports: [RouterOutlet, RouterLink, RouterLinkActive, ConfirmModal],
   templateUrl: './audit-teller-layout.html',
-  styleUrl: './audit-teller-layout.css',
 })
 export class AuditTellerLayout {
   private auth = inject(AuthService);

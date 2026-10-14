@@ -1,4 +1,5 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { AllowedCharsDirective } from '../../../../shared/directives/allowed-chars.directive';
 import { HttpClient } from '@angular/common/http';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AlertService } from '../../../../core/services/alert.service';
@@ -12,9 +13,8 @@ type SortField = 'employee_id' | 'last_name' | 'username' | 'role' | 'is_active'
 
 @Component({
   selector: 'app-users',
-  imports: [ReactiveFormsModule, TablePagination],
+  imports: [AllowedCharsDirective, ReactiveFormsModule, TablePagination],
   templateUrl: './users.html',
-  styleUrl: './users.css',
 })
 export class Users implements OnInit {
   private http = inject(HttpClient);
@@ -109,7 +109,8 @@ export class Users implements OnInit {
     last_name: ['', Validators.required],
     suffix: [''],
     email: ['', [Validators.required, Validators.email]],
-    contact_number: [''],
+    // Optional, but when given it must be an 11-digit mobile number.
+    contact_number: ['', Validators.pattern(/^\d{11}$/)],
     is_active: [true],
   });
 

@@ -1,10 +1,15 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { NumericInput } from '../../../../shared/directives/numeric-input.directive';
 import { HttpClient } from '@angular/common/http';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { AlertService } from '../../../../core/services/alert.service';
 import { environment } from '../../../../../environments/environment';
 import { TablePagination } from '../../../../shared/components/table-pagination/table-pagination';
+import {
+  RemittanceTripsTable,
+  RemittanceTicket,
+} from '../../../../shared/components/remittance-trips-table/remittance-trips-table';
 import { expenseTypeLabel } from '../../../../shared/constants/expense-types';
 import { passengerCategoryLabel } from '../../../../shared/models/ticket.models';
 
@@ -27,6 +32,8 @@ interface Remittance {
   teller_remarks: string | null;
   status: 'submitted' | 'approved' | 'rejected' | 'finalized';
   submitted_at: string;
+  // Set once a rejected remittance has been corrected and resubmitted.
+  resubmitted_at: string | null;
   approved_at: string | null;
   conductor: { id: number; first_name: string; last_name: string; employee_id: string };
   driver: { id: number; first_name: string; last_name: string; employee_id: string };
@@ -41,6 +48,8 @@ interface Remittance {
     ticket_number_start: string | null;
     ticket_number_end: string | null;
     Route: { origin: string; destination: string } | null;
+    // Loaded when the details panel is opened.
+    Tickets?: RemittanceTicket[];
   }[];
 }
 
@@ -96,6 +105,30 @@ const EXPENSE_CONTROLS: Record<string, string> = {
   miscellaneous: 'exp_miscellaneous',
 };
 
+// Expense inputs shown on the remittance forms, in display order.
+const EXPENSE_FIELDS = [
+  { ctrl: 'exp_officer', label: 'Officer / Police' },
+  { ctrl: 'exp_toll_fees', label: 'Toll Fees' },
+  { ctrl: 'exp_parking', label: 'Parking' },
+  { ctrl: 'exp_ppa', label: 'PPA (Port Authority)' },
+  { ctrl: 'exp_washing', label: 'Bus Washing' },
+  { ctrl: 'exp_diesel', label: 'Diesel / Fuel' },
+  { ctrl: 'exp_caller_grand_terminal', label: 'Caller (Grand Terminal)' },
+  { ctrl: 'exp_caller_calamba_terminal', label: 'Caller (Calamba Terminal)' },
+  { ctrl: 'exp_pwd', label: 'PWD / Senior Discount' },
+  { ctrl: 'exp_miscellaneous', label: 'Miscellaneous' },
+];
+
+const sumExpenseFields = (f: any): number =>
+  EXPENSE_FIELDS.reduce((sum, field) => sum + Number(f?.[field.ctrl] || 0), 0);
+
+const sumLessFields = (f: any): number =>
+  Number(f?.driver_commission || 0) +
+  Number(f?.conductor_commission || 0) +
+  Number(f?.bonus_allowance || 0) +
+  Number(f?.other_deductions || 0) +
+  Number(f?.cash_deposit || 0);
+
 /** datetime-local value (YYYY-MM-DDTHH:mm) in the browser's local time. */
 const toDateTimeLocal = (d: string | Date): string => {
   const date = new Date(d);
@@ -108,7 +141,7 @@ type Tab = 'list' | 'submit';
 
 @Component({
   selector: 'app-conductor-remittances',
-  imports: [ReactiveFormsModule, CurrencyPipe, DatePipe, TablePagination],
+  imports: [NumericInput, ReactiveFormsModule, CurrencyPipe, DatePipe, TablePagination, RemittanceTripsTable],
   templateUrl: './remittances.html',
 })
 export class ConductorRemittancesPage implements OnInit {
@@ -161,8 +194,26 @@ export class ConductorRemittancesPage implements OnInit {
     this.includedLoggedExpenses().reduce((sum, e) => sum + Number(e.amount), 0),
   );
 
+  // ── Edit & resubmit state (rejected remittances) ──
+  readonly EXPENSE_FIELDS = EXPENSE_FIELDS;
+  editing = signal(false);
+  isResubmitting = signal(false);
+  editForm: FormGroup;
+  editValues = signal<any>({});
+  editTotalExpenses = computed(() => sumExpenseFields(this.editValues()));
+  editNetGross = computed(
+    () => Number(this.selected()?.gross_income ?? 0) - this.editTotalExpenses(),
+  );
+  editTotalLess = computed(() => sumLessFields(this.editValues()));
+  editNetCollection = computed(() => this.editNetGross() - this.editTotalLess());
+
   constructor() {
-    this.remittanceForm = this.fb.group({
+    this.remittanceForm = this.createRemittanceForm();
+    this.editForm = this.createRemittanceForm();
+  }
+
+  private createRemittanceForm(): FormGroup {
+    return this.fb.group({
       exp_officer: [0, [Validators.min(0)]],
       exp_toll_fees: [0, [Validators.min(0)]],
       exp_parking: [0, [Validators.min(0)]],
@@ -188,6 +239,7 @@ export class ConductorRemittancesPage implements OnInit {
     this.loadBuses();
     this.remittanceForm.valueChanges.subscribe((v) => this.formValues.set(v));
     this.formValues.set(this.remittanceForm.value);
+    this.editForm.valueChanges.subscribe((v) => this.editValues.set(v));
   }
 
   setTab(tab: Tab): void {
@@ -314,6 +366,96 @@ export class ConductorRemittancesPage implements OnInit {
         } as any
       )[status] ?? 'bg-gray-100 text-gray-800'
     );
+  }
+
+  /** A resubmitted remittance is pending review again, shown as "Updated". */
+  statusLabel(r: Remittance): string {
+    if (r.status !== 'submitted') return r.status;
+    return r.resubmitted_at ? 'Updated' : 'Pending';
+  }
+
+  /** Opens the details panel, then loads the tickets issued on each of its trips. */
+  openDetails(r: Remittance): void {
+    this.selected.set(r);
+    this.http
+      .get<Remittance>(`${this.API}/remittances/${r.id}`, { withCredentials: true })
+      .subscribe({
+        next: (detail) => {
+          const current = this.selected();
+          if (current?.id === r.id) this.selected.set({ ...current, Trips: detail.Trips });
+        },
+      });
+  }
+
+  closeDetails(): void {
+    this.editing.set(false);
+    this.selected.set(null);
+  }
+
+  // ── Edit & resubmit a rejected remittance ──
+  startEdit(): void {
+    const r = this.selected();
+    if (!r || r.status !== 'rejected') return;
+    const values: Record<string, number> = {
+      driver_commission: Number(r.driver_commission),
+      conductor_commission: Number(r.conductor_commission),
+      bonus_allowance: Number(r.bonus_allowance),
+      other_deductions: Number(r.other_deductions),
+      cash_deposit: Number(r.cash_deposit),
+      driver_officer_share: Number(r.driver_officer_share),
+      conductor_officer_share: Number(r.conductor_officer_share),
+    };
+    for (const ctrl of Object.values(EXPENSE_CONTROLS)) values[ctrl] = 0;
+    for (const exp of r.RemittanceExpenses) {
+      const ctrl = EXPENSE_CONTROLS[exp.expense_type];
+      if (ctrl) values[ctrl] += Number(exp.amount);
+    }
+    this.editForm.reset(values);
+    this.editValues.set(this.editForm.value);
+    this.editing.set(true);
+  }
+
+  cancelEdit(): void {
+    this.editing.set(false);
+  }
+
+  resubmitRemittance(): void {
+    const r = this.selected();
+    if (!r) return;
+    if (this.editForm.invalid) {
+      this.editForm.markAllAsTouched();
+      this.alertService.error('Resubmit Failed', 'Enter valid amounts (0 or more).');
+      return;
+    }
+    const f = this.editForm.value;
+    this.isResubmitting.set(true);
+    this.http
+      .put<any>(
+        `${this.API}/remittances/${r.id}`,
+        {
+          expenses: this.buildExpensesPayload(f),
+          driver_commission: Number(f.driver_commission || 0),
+          conductor_commission: Number(f.conductor_commission || 0),
+          bonus_allowance: Number(f.bonus_allowance || 0),
+          other_deductions: Number(f.other_deductions || 0),
+          cash_deposit: Number(f.cash_deposit || 0),
+          driver_officer_share: Number(f.driver_officer_share || 0),
+          conductor_officer_share: Number(f.conductor_officer_share || 0),
+        },
+        { withCredentials: true },
+      )
+      .subscribe({
+        next: () => {
+          this.isResubmitting.set(false);
+          this.alertService.success('Success', 'Remittance updated and resubmitted to audit teller.');
+          this.closeDetails();
+          this.loadRemittances();
+        },
+        error: (err) => {
+          this.isResubmitting.set(false);
+          this.alertService.error('Error', err.error?.message ?? 'Failed to resubmit remittance.');
+        },
+      });
   }
 
   formatExpenseType(type: string): string {
@@ -546,8 +688,7 @@ export class ConductorRemittancesPage implements OnInit {
 
   netCollection = computed(() => this.netGross() - this.totalLess());
 
-  private buildExpensesPayload() {
-    const f = this.remittanceForm.value;
+  private buildExpensesPayload(f: any = this.remittanceForm.value) {
     const map: Record<string, number> = {
       officer: f.exp_officer,
       toll_fees: f.exp_toll_fees,

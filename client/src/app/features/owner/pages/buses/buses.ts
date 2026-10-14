@@ -1,4 +1,5 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { NumericInput } from '../../../../shared/directives/numeric-input.directive';
 import { HttpClient } from '@angular/common/http';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AlertService } from '../../../../core/services/alert.service';
@@ -31,9 +32,8 @@ type SortField = 'bus_number' | 'plate_number' | 'capacity' | 'status';
 
 @Component({
   selector: 'app-buses',
-  imports: [ReactiveFormsModule, TablePagination],
+  imports: [NumericInput, ReactiveFormsModule, TablePagination],
   templateUrl: './buses.html',
-  styleUrl: './buses.css',
 })
 export class Buses implements OnInit {
   private http = inject(HttpClient);

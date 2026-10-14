@@ -9,7 +9,9 @@ const {
   printTicket,
   getTickets,
   submitRemittance,
+  resubmitRemittance,
   getRemittances,
+  getRemittanceById,
   createExpense,
   getExpenses,
   deleteExpense,
@@ -26,7 +28,9 @@ router.get("/routes/:routeId/stops", getRouteStopsForConductor);
 router.post("/trips/:id/tickets", printTicket);
 router.get("/tickets", getTickets);
 router.get("/remittances", getRemittances);
+router.get("/remittances/:id", getRemittanceById);
 router.post("/remittances", submitRemittance);
+router.put("/remittances/:id", resubmitRemittance);
 router.get("/expenses", getExpenses);
 router.post("/expenses", createExpense);
 router.delete("/expenses/:id", deleteExpense);

@@ -55,7 +55,6 @@ type SortField = 'ticket_number' | 'issued_at' | 'fare' | 'category';
   selector: 'app-tickets',
   imports: [CurrencyPipe, DatePipe, TablePagination],
   templateUrl: './tickets.html',
-  styleUrl: './tickets.css',
 })
 export class TicketsPage implements OnInit {
   private http = inject(HttpClient);

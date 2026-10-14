@@ -115,7 +115,10 @@ const sendTripsScheduledSummaryEmail = async ({ to, name, busLabel, date, trips 
 		.map((t) =>
 			row(
 				`Trip #${t.tripNumber} (${t.routeLabel})`,
-				new Date(t.departureTime).toLocaleTimeString("en-PH", { timeStyle: "short" }),
+				new Date(t.departureTime).toLocaleString("en-PH", {
+					dateStyle: "medium",
+					timeStyle: "short",
+				}),
 			),
 		)
 		.join("");
@@ -143,7 +146,10 @@ const sendTripsScheduledManagementEmail = async ({
 		.map((t) =>
 			row(
 				`Trip #${t.tripNumber} (${t.routeLabel})`,
-				new Date(t.departureTime).toLocaleTimeString("en-PH", { timeStyle: "short" }),
+				new Date(t.departureTime).toLocaleString("en-PH", {
+					dateStyle: "medium",
+					timeStyle: "short",
+				}),
 			),
 		)
 		.join("");
@@ -216,6 +222,39 @@ const sendRemittanceSubmittedEmail = async ({
 	);
 };
 
+// Confirm to the conductor that their remittance was (re)submitted, with a summary of it.
+const sendRemittanceReceiptEmail = async ({ to, name, busLabel, remittance, isResubmission }) => {
+	const html = renderEmail({
+		heading: isResubmission
+			? "Remittance Resubmitted Successfully"
+			: "Remittance Submitted Successfully",
+		intro: `Hi ${name}, your remittance was successfully ${isResubmission ? "updated and resubmitted" : "submitted"} and is now awaiting review by the audit teller. Here is a summary of what you sent.`,
+		tableRows:
+			row("Bus", busLabel) +
+			row("Date", new Date(remittance.date).toLocaleDateString("en-PH", { dateStyle: "medium" })) +
+			row("No. of Trips", remittance.no_of_trips) +
+			row("Gross Income", peso(remittance.gross_income)) +
+			row("Total Expenses", peso(remittance.total_expenses)) +
+			row("Net Gross", peso(remittance.net_gross)) +
+			row("Driver Commission", peso(remittance.driver_commission)) +
+			row("Conductor Commission", peso(remittance.conductor_commission)) +
+			row("Bonus / Allowance", peso(remittance.bonus_allowance)) +
+			row("Other Deductions", peso(remittance.other_deductions)) +
+			row("Cash Deposit", peso(remittance.cash_deposit)) +
+			row("Net Collection", peso(remittance.net_collection)),
+		note: "You will receive another email once the audit teller approves or rejects this remittance.",
+		ctaLabel: "View Remittance",
+		ctaUrl: LOGIN_URL(),
+	});
+	await send(
+		to,
+		isResubmission
+			? "Remittance resubmitted successfully — JAPS"
+			: "Remittance submitted successfully — JAPS",
+		html,
+	);
+};
+
 module.exports = {
 	fullName,
 	sendAccountCredentialsEmail,
@@ -225,4 +264,5 @@ module.exports = {
 	sendCrewAssignmentEmail,
 	sendRemittanceStatusEmail,
 	sendRemittanceSubmittedEmail,
+	sendRemittanceReceiptEmail,
 };

@@ -70,6 +70,7 @@
       <p class="text-sm">No remittances found.</p>
     </div>
   } @else {
+    <div class="overflow-x-auto">
     <table class="w-full text-sm">
       <thead class="bg-gray-50 border-b border-gray-200">
         <tr>
@@ -173,7 +174,7 @@
                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize"
                 [class]="getStatusBadge(remit.status)"
               >
-                {{ remit.status === 'submitted' ? 'Pending' : remit.status }}
+                {{ remit.status === 'submitted' ? (remit.resubmitted_at ? 'Updated' : 'Pending') : remit.status }}
               </span>
             </td>
             <td class="px-5 py-3 text-xs text-gray-500">
@@ -201,6 +202,7 @@
         }
       </tbody>
     </table>
+    </div>
 
     <app-table-pagination
       [currentPage]="currentPage()"

@@ -98,7 +98,7 @@
                   class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize shrink-0"
                   [class]="getStatusBadge(r.status)"
                 >
-                  {{ r.status === 'submitted' ? 'Pending' : r.status }}
+                  {{ statusLabel(r) }}
                 </span>
               </div>
               <div class="flex gap-4 text-xs text-gray-500 mb-2">
@@ -119,7 +119,7 @@
                 >
               </div>
               <button
-                (click)="selected.set(r)"
+                (click)="openDetails(r)"
                 class="p-1.5 text-gray-400 hover:text-[#1E5AAA] hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                 title="View details"
               >
@@ -210,12 +210,12 @@
                       class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize"
                       [class]="getStatusBadge(r.status)"
                     >
-                      {{ r.status === 'submitted' ? 'Pending' : r.status }}
+                      {{ statusLabel(r) }}
                     </span>
                   </td>
                   <td class="px-5 py-3">
                     <button
-                      (click)="selected.set(r)"
+                      (click)="openDetails(r)"
                       class="p-1.5 text-gray-400 hover:text-[#1E5AAA] hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                       title="View details"
                     >
@@ -498,18 +498,7 @@
               <form [formGroup]="remittanceForm">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
                   @for (
-                    field of [
-                      { ctrl: 'exp_officer', label: 'Officer / Police' },
-                      { ctrl: 'exp_toll_fees', label: 'Toll Fees' },
-                      { ctrl: 'exp_parking', label: 'Parking' },
-                      { ctrl: 'exp_ppa', label: 'PPA (Port Authority)' },
-                      { ctrl: 'exp_washing', label: 'Bus Washing' },
-                      { ctrl: 'exp_diesel', label: 'Diesel / Fuel' },
-                      { ctrl: 'exp_caller_grand_terminal', label: 'Caller (Grand Terminal)' },
-                      { ctrl: 'exp_caller_calamba_terminal', label: 'Caller (Calamba Terminal)' },
-                      { ctrl: 'exp_pwd', label: 'PWD / Senior Discount' },
-                      { ctrl: 'exp_miscellaneous', label: 'Miscellaneous' },
-                    ];
+                    field of EXPENSE_FIELDS;
                     track field.ctrl
                   ) {
                     <div>
@@ -740,7 +729,7 @@
     <div class="flex items-center justify-between mb-6">
       <div class="flex items-center gap-3">
         <button
-          (click)="selected.set(null)"
+          (click)="closeDetails()"
           class="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors cursor-pointer"
         >
           <i class="pi pi-arrow-left text-sm"></i>
@@ -757,7 +746,13 @@
         class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold capitalize"
         [class]="getStatusBadge(selected()!.status)"
       >
-        {{ selected()!.status === 'submitted' ? 'Pending Review' : selected()!.status }}
+        {{
+          selected()!.status === 'submitted'
+            ? selected()!.resubmitted_at
+              ? 'Updated — Pending Review'
+              : 'Pending Review'
+            : selected()!.status
+        }}
       </span>
     </div>
 
@@ -770,6 +765,251 @@
           <span class="font-semibold">Teller Remarks:</span> {{ selected()!.teller_remarks }}
         </div>
       </div>
+    }
+
+    @if (selected()!.status === 'rejected' && !editing()) {
+      <div
+        class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg mb-6"
+      >
+        <span>
+          <i class="pi pi-times-circle mr-1"></i>
+          This remittance was rejected. Correct the entries and resubmit it for review.
+        </span>
+        <button
+          (click)="startEdit()"
+          class="shrink-0 flex items-center justify-center gap-2 bg-[#1E5AAA] hover:bg-[#174d93] text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer"
+        >
+          <i class="pi pi-pencil text-xs"></i>
+          Edit & Resubmit
+        </button>
+      </div>
+    }
+
+    <!-- Edit & resubmit form (rejected remittances only) -->
+    @if (editing()) {
+      <form
+        [formGroup]="editForm"
+        (ngSubmit)="resubmitRemittance()"
+        class="bg-white rounded-xl border border-amber-300 p-5 mb-6"
+      >
+        <h3 class="text-sm font-semibold text-gray-700 mb-1">Edit Remittance</h3>
+        <p class="text-xs text-gray-400 mb-4">
+          Resubmitting updates this same remittance — it does not create a new one.
+        </p>
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div class="xl:col-span-2 space-y-5">
+            <div>
+              <h4 class="font-bold text-gray-700 text-xs mb-3">Trip Expenses</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                @for (field of EXPENSE_FIELDS; track field.ctrl) {
+                  <div>
+                    <label
+                      class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1"
+                      >{{ field.label }}</label
+                    >
+                    <div class="relative">
+                      <span
+                        class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400"
+                        >₱</span
+                      >
+                      <input
+                        [formControlName]="field.ctrl"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        class="w-full pl-6 pr-2 py-2 border border-gray-300 rounded-lg text-sm font-bold outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+            <div>
+              <h4 class="font-bold text-gray-700 text-xs mb-3">Commissions, Deposit & Shares</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                  <div>
+                    <label
+                      class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1"
+                      >Driver Commission</label
+                    >
+                    <div class="relative">
+                      <span
+                        class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400"
+                        >₱</span
+                      >
+                      <input
+                        formControlName="driver_commission"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        class="w-full pl-6 pr-2 py-2 border border-gray-300 rounded-lg text-sm font-bold outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label
+                      class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1"
+                      >Conductor Commission</label
+                    >
+                    <div class="relative">
+                      <span
+                        class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400"
+                        >₱</span
+                      >
+                      <input
+                        formControlName="conductor_commission"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        class="w-full pl-6 pr-2 py-2 border border-gray-300 rounded-lg text-sm font-bold outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label
+                      class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1"
+                      >Bonus / Allowance</label
+                    >
+                    <div class="relative">
+                      <span
+                        class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400"
+                        >₱</span
+                      >
+                      <input
+                        formControlName="bonus_allowance"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        class="w-full pl-6 pr-2 py-2 border border-gray-300 rounded-lg text-sm font-bold outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label
+                      class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1"
+                      >Other Deductions</label
+                    >
+                    <div class="relative">
+                      <span
+                        class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400"
+                        >₱</span
+                      >
+                      <input
+                        formControlName="other_deductions"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        class="w-full pl-6 pr-2 py-2 border border-gray-300 rounded-lg text-sm font-bold outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label
+                      class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1"
+                      >Cash Deposit</label
+                    >
+                    <div class="relative">
+                      <span
+                        class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400"
+                        >₱</span
+                      >
+                      <input
+                        formControlName="cash_deposit"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        class="w-full pl-6 pr-2 py-2 border border-gray-300 rounded-lg text-sm font-bold outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label
+                      class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1"
+                      >Driver Officer Share</label
+                    >
+                    <div class="relative">
+                      <span
+                        class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400"
+                        >₱</span
+                      >
+                      <input
+                        formControlName="driver_officer_share"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        class="w-full pl-6 pr-2 py-2 border border-gray-300 rounded-lg text-sm font-bold outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label
+                      class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1"
+                      >Conductor Officer Share</label
+                    >
+                    <div class="relative">
+                      <span
+                        class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400"
+                        >₱</span
+                      >
+                      <input
+                        formControlName="conductor_officer_share"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        class="w-full pl-6 pr-2 py-2 border border-gray-300 rounded-lg text-sm font-bold outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div class="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-2 text-xs">
+              <div class="flex justify-between">
+                <span class="text-gray-500">Gross Income</span>
+                <span class="font-bold text-gray-800">{{
+                  selected()!.gross_income | currency: 'PHP'
+                }}</span>
+              </div>
+              <div class="flex justify-between text-red-600">
+                <span>Less Expenses</span>
+                <span class="font-bold">-{{ editTotalExpenses() | currency: 'PHP' }}</span>
+              </div>
+              <div class="border-t border-gray-200 pt-1.5 flex justify-between font-bold text-sm">
+                <span class="text-gray-800">Net Gross</span>
+                <span>{{ editNetGross() | currency: 'PHP' }}</span>
+              </div>
+              <div class="flex justify-between text-amber-600">
+                <span>Less Comm & Deposit</span>
+                <span class="font-bold">-{{ editTotalLess() | currency: 'PHP' }}</span>
+              </div>
+              <div
+                class="border-t border-gray-200 pt-2 flex justify-between font-black text-base text-[#1E5AAA] bg-blue-50/30 p-2 rounded-xl border border-dashed border-blue-100"
+              >
+                <span>Net Collection</span>
+                <span>{{ editNetCollection() | currency: 'PHP' }}</span>
+              </div>
+            </div>
+            <button
+              type="submit"
+              [disabled]="isResubmitting()"
+              class="w-full flex items-center justify-center gap-2 bg-[#1E5AAA] hover:bg-[#174d93] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors cursor-pointer"
+            >
+              <i class="pi pi-send text-xs"></i>
+              {{ isResubmitting() ? 'Resubmitting…' : 'Resubmit to Audit Teller' }}
+            </button>
+            <button
+              type="button"
+              (click)="cancelEdit()"
+              [disabled]="isResubmitting()"
+              class="w-full text-sm font-semibold text-gray-600 hover:bg-gray-100 px-5 py-2.5 rounded-lg transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </form>
     }
 
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -810,58 +1050,7 @@
             <span class="text-xs text-gray-400">{{ selected()!.no_of_trips }} total trips</span>
           </div>
           <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead class="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th
-                    class="text-left px-5 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider"
-                  >
-                    Trip #
-                  </th>
-                  <th
-                    class="text-left px-5 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider"
-                  >
-                    Route
-                  </th>
-                  <th
-                    class="text-left px-5 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider"
-                  >
-                    Departure
-                  </th>
-                  <th
-                    class="text-left px-5 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider"
-                  >
-                    Tickets
-                  </th>
-                  <th
-                    class="text-right px-5 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider"
-                  >
-                    Grand Total
-                  </th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100">
-                @for (trip of selected()!.Trips; track trip.id) {
-                  <tr class="hover:bg-gray-50">
-                    <td class="px-5 py-3 font-medium text-gray-800">{{ trip.trip_number }}</td>
-                    <td class="px-5 py-3 text-gray-600 text-xs">
-                      @if (trip.Route) {
-                        {{ trip.Route.origin }} → {{ trip.Route.destination }}
-                      }
-                    </td>
-                    <td class="px-5 py-3 text-gray-600 text-xs">
-                      {{ trip.departure_time | date: 'shortTime' }}
-                    </td>
-                    <td class="px-5 py-3 text-gray-500 text-xs">
-                      {{ trip.ticket_number_start }} – {{ trip.ticket_number_end }}
-                    </td>
-                    <td class="px-5 py-3 text-right font-semibold text-green-600">
-                      {{ trip.grand_total | currency: 'PHP' }}
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
+            <app-remittance-trips-table [trips]="selected()!.Trips" />
           </div>
         </div>
 
@@ -986,6 +1175,12 @@
             <span>Submitted</span>
             <span class="text-gray-700">{{ selected()!.submitted_at | date: 'medium' }}</span>
           </div>
+          @if (selected()!.resubmitted_at) {
+            <div class="flex justify-between">
+              <span>Resubmitted</span>
+              <span class="text-gray-700">{{ selected()!.resubmitted_at | date: 'medium' }}</span>
+            </div>
+          }
           @if (selected()!.approved_at) {
             <div class="flex justify-between">
               <span>{{ selected()!.status === 'approved' ? 'Approved' : 'Reviewed' }}</span>

@@ -6,7 +6,6 @@ import { PrinterSetupService } from '../../../../core/services/printer-setup.ser
   selector: 'app-printer-setup',
   imports: [],
   templateUrl: './printer-setup.html',
-  styleUrl: './printer-setup.css',
 })
 export class PrinterSetupPage {
   private printerSetup = inject(PrinterSetupService);

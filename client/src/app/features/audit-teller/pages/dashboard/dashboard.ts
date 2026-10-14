@@ -16,6 +16,7 @@ interface RemittanceSummary {
   date: string;
   net_collection: number;
   status: 'submitted' | 'approved' | 'rejected';
+  resubmitted_at?: string | null;
   submitted_at: string;
   approved_at: string | null;
   conductor: { id: number; first_name: string; last_name: string; employee_id: string };
@@ -42,7 +43,6 @@ interface AuditorActivity {
   selector: 'app-audit-teller-dashboard',
   imports: [RouterLink, CurrencyPipe, DatePipe, DecimalPipe],
   templateUrl: './dashboard.html',
-  styleUrl: './dashboard.css',
 })
 export class AuditTellerDashboard implements OnInit {
   private http = inject(HttpClient);
