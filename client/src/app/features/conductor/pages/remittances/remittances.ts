@@ -89,7 +89,7 @@ interface LoggedExpense {
   amount: string | number;
 }
 
-const MANUAL_CATEGORIES = ['regular', 'student', 'senior_citizen', 'pwd', 'discounted'];
+const MANUAL_CATEGORIES = ['regular', 'student', 'senior_citizen'];
 
 // Remittance form control for each expense type.
 const EXPENSE_CONTROLS: Record<string, string> = {
@@ -101,7 +101,6 @@ const EXPENSE_CONTROLS: Record<string, string> = {
   diesel: 'exp_diesel',
   caller_grand_terminal: 'exp_caller_grand_terminal',
   caller_calamba_terminal: 'exp_caller_calamba_terminal',
-  pwd: 'exp_pwd',
   miscellaneous: 'exp_miscellaneous',
 };
 
@@ -115,7 +114,6 @@ const EXPENSE_FIELDS = [
   { ctrl: 'exp_diesel', label: 'Diesel / Fuel' },
   { ctrl: 'exp_caller_grand_terminal', label: 'Caller (Grand Terminal)' },
   { ctrl: 'exp_caller_calamba_terminal', label: 'Caller (Calamba Terminal)' },
-  { ctrl: 'exp_pwd', label: 'PWD / Senior Discount' },
   { ctrl: 'exp_miscellaneous', label: 'Miscellaneous' },
 ];
 
@@ -222,7 +220,6 @@ export class ConductorRemittancesPage implements OnInit {
       exp_diesel: [0, [Validators.min(0)]],
       exp_caller_grand_terminal: [0, [Validators.min(0)]],
       exp_caller_calamba_terminal: [0, [Validators.min(0)]],
-      exp_pwd: [0, [Validators.min(0)]],
       exp_miscellaneous: [0, [Validators.min(0)]],
       driver_commission: [0, [Validators.required, Validators.min(0)]],
       conductor_commission: [0, [Validators.required, Validators.min(0)]],
@@ -668,7 +665,6 @@ export class ConductorRemittancesPage implements OnInit {
       f.exp_diesel,
       f.exp_caller_grand_terminal,
       f.exp_caller_calamba_terminal,
-      f.exp_pwd,
       f.exp_miscellaneous,
     ].reduce((sum, v) => sum + Number(v || 0), 0);
   });
@@ -698,7 +694,6 @@ export class ConductorRemittancesPage implements OnInit {
       diesel: f.exp_diesel,
       caller_grand_terminal: f.exp_caller_grand_terminal,
       caller_calamba_terminal: f.exp_caller_calamba_terminal,
-      pwd: f.exp_pwd,
       miscellaneous: f.exp_miscellaneous,
     };
     return Object.entries(map)
@@ -743,7 +738,6 @@ export class ConductorRemittancesPage implements OnInit {
       exp_diesel,
       exp_caller_grand_terminal,
       exp_caller_calamba_terminal,
-      exp_pwd,
       exp_miscellaneous,
       ...rest
     } = this.remittanceForm.value;
@@ -777,7 +771,6 @@ export class ConductorRemittancesPage implements OnInit {
             exp_diesel: 0,
             exp_caller_grand_terminal: 0,
             exp_caller_calamba_terminal: 0,
-            exp_pwd: 0,
             exp_miscellaneous: 0,
             driver_commission: 0,
             conductor_commission: 0,
