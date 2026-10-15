@@ -35,7 +35,6 @@ export class ConductorLayout {
     { label: 'My Trips', shortLabel: 'Trips', icon: 'pi-list', route: 'trips' },
     { label: 'Ticketing Terminal', shortLabel: 'Ticketing', icon: 'pi-ticket', route: 'ticketing' },
     { label: 'All Tickets', shortLabel: 'Tickets', icon: 'pi-receipt', route: 'tickets' },
-    { label: 'Expenses', icon: 'pi-wallet', route: 'expenses' },
     { label: 'Remittances', shortLabel: 'Remit', icon: 'pi-file-check', route: 'remittances' },
   ];
 
