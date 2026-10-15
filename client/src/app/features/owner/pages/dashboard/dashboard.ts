@@ -25,7 +25,7 @@ interface DashboardData {
   range: { from: string; to: string };
   kpi: {
     net_gross_in_range: number;
-    net_collection_in_range: number;
+    total_revenue_in_range: number;
     driver_commission_in_range: number;
     conductor_commission_in_range: number;
     passenger_count_in_range: number;

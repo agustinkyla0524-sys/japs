@@ -17,7 +17,6 @@ const {
   buildUtilForecast,
 } = require("../services/forecast/buildForecast");
 const { buildInsights } = require("../services/insights/buildInsights");
-const { findRemittanceDetail } = require("../services/remittance/findRemittanceDetail");
 
 const router = express.Router();
 router.use(authenticate, authorize(...OWNER_LEVEL_ROLES));
@@ -63,18 +62,14 @@ router.get("/dashboard", async (req, res) => {
         },
       })) || 0;
 
-    // ── KPI: Net collection + crew commissions within the selected range ──
-    const [collectionInRange] = await sequelize.query(
-      `SELECT COALESCE(SUM(net_collection),0) AS net_collection,
-              COALESCE(SUM(driver_commission),0) AS driver_commission,
-              COALESCE(SUM(conductor_commission),0) AS conductor_commission
-       FROM remittances
-       WHERE status = 'approved' AND submitted_at BETWEEN :start AND :end`,
-      {
-        replacements: { start: rangeStart, end: rangeEnd },
-        type: sequelize.QueryTypes.SELECT,
-      },
-    );
+    // ── KPI: Total revenue (completed trips' grand_total) in the range ──
+    const totalRevenueInRange =
+      (await Trip.sum("grand_total", {
+        where: {
+          status: "completed",
+          departure_time: { [Op.between]: [rangeStart, rangeEnd] },
+        },
+      })) || 0;
 
     // ── KPI: Passenger counts via raw SQL ─────────────────────────────────
     const [pcInRange] = await sequelize.query(
@@ -115,7 +110,7 @@ router.get("/dashboard", async (req, res) => {
     const busesInUseToday = await Trip.count({
       distinct: true,
       col: "bus_id",
-      where: {
+      where: { 
         status: { [Op.in]: ["ongoing", "completed"] },
         departure_time: { [Op.between]: [todayStart, todayEnd] },
       },
@@ -130,9 +125,6 @@ router.get("/dashboard", async (req, res) => {
     const remittanceTotal = await Remittance.count();
     const remittancePending = await Remittance.count({
       where: { status: "submitted" },
-    });
-    const remittanceRejected = await Remittance.count({
-      where: { status: "rejected" },
     });
 
     // ── Daily passenger volume within the selected range (raw SQL) ────────
@@ -258,9 +250,7 @@ router.get("/dashboard", async (req, res) => {
       },
       kpi: {
         net_gross_in_range: netGrossInRange,
-        net_collection_in_range: Number(collectionInRange.net_collection) || 0,
-        driver_commission_in_range: Number(collectionInRange.driver_commission) || 0,
-        conductor_commission_in_range: Number(collectionInRange.conductor_commission) || 0,
+        total_revenue_in_range: Number(totalRevenueInRange),
         passenger_count_in_range: passengerCountInRange,
         passenger_growth_pct: passengerGrowth,
         bus_utilisation_rate: busUtilRate,
@@ -269,7 +259,6 @@ router.get("/dashboard", async (req, res) => {
         remittance_approved: remittanceApproved,
         remittance_total: remittanceTotal,
         remittance_pending: remittancePending,
-        remittance_rejected: remittanceRejected,
       },
       daily_passengers: dailyPassengersRaw,
       route_profit: routeProfit,
@@ -317,7 +306,42 @@ router.get("/remittances", async (req, res) => {
 // GET /api/owner/remittances/:id
 router.get("/remittances/:id", async (req, res) => {
   try {
-    const remittance = await findRemittanceDetail({ id: req.params.id });
+    const remittance = await Remittance.findByPk(req.params.id, {
+      include: [
+        { model: BusModel, attributes: ["id", "bus_number", "plate_number"] },
+        {
+          model: User,
+          as: "driver",
+          attributes: ["id", "first_name", "last_name", "employee_id"],
+        },
+        {
+          model: User,
+          as: "conductor",
+          attributes: ["id", "first_name", "last_name", "employee_id"],
+        },
+        {
+          model: User,
+          as: "approver",
+          attributes: ["id", "first_name", "last_name"],
+        },
+        {
+          model: RemittanceExpense,
+          attributes: ["id", "expense_type", "amount"],
+        },
+        {
+          model: Trip,
+          attributes: [
+            "id",
+            "trip_number",
+            "departure_time",
+            "grand_total",
+            "ticket_number_start",
+            "ticket_number_end",
+          ],
+          include: [{ model: Route, attributes: ["origin", "destination"] }],
+        },
+      ],
+    });
     if (!remittance)
       return res.status(404).json({ message: "Remittance not found." });
     return res.json(remittance);
