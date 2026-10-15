@@ -117,7 +117,7 @@ export class PrinterSetupService {
       new Uint8Array([ESC, 0x40]), // initialize
       new Uint8Array([ESC, 0x61, 0x01]), // center align
       this.buildRasterImageCommand(bitmap),
-      new Uint8Array([ESC, 0x64, 0x01]), // feed 2 lines
+      new Uint8Array([ESC, 0x64, 0x01]), // feed 1 line
     ]);
 
     const chunkSize = 180;
