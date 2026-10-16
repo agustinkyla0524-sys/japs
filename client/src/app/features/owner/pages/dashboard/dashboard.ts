@@ -207,7 +207,7 @@ export class Dashboard implements OnInit {
     const a = this.remittanceApprovedPct();
     const b = a + this.remittanceRejectedPct();
     return `conic-gradient(#22c55e 0% ${a}%, #ef4444 ${a}% ${b}%, #f59e0b ${b}% 100%)`;
-  });
+  }); 
 
   dailyPassengerBars = computed(() => {
     const d = this.dash();

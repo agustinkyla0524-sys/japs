@@ -18,6 +18,10 @@ const {
 } = require("../services/forecast/buildForecast");
 const { buildInsights } = require("../services/insights/buildInsights");
 
+// Date columns can come back as "YYYY-MM-DD" strings or Date objects.
+const dateKey = (d) =>
+  typeof d === "string" ? d.slice(0, 10) : new Date(d).toISOString().split("T")[0];
+
 const router = express.Router();
 router.use(authenticate, authorize(...OWNER_LEVEL_ROLES));
 
@@ -125,6 +129,9 @@ router.get("/dashboard", async (req, res) => {
     const remittanceTotal = await Remittance.count();
     const remittancePending = await Remittance.count({
       where: { status: "submitted" },
+    });
+    const remittanceRejected = await Remittance.count({
+      where: { status: "rejected" },
     });
 
     // ── Daily passenger volume within the selected range (raw SQL) ────────
@@ -259,6 +266,7 @@ router.get("/dashboard", async (req, res) => {
         remittance_approved: remittanceApproved,
         remittance_total: remittanceTotal,
         remittance_pending: remittancePending,
+        remittance_rejected: remittanceRejected,
       },
       daily_passengers: dailyPassengersRaw,
       route_profit: routeProfit,
@@ -380,7 +388,7 @@ router.get("/forecast", async (req, res) => {
     // Build dense daily array (fill gaps with 0)
     const dailyMap = {};
     for (const r of dailyRaw) {
-      dailyMap[r.date.toISOString().split("T")[0]] = Number(r.total);
+      dailyMap[dateKey(r.date)] = Number(r.total);
     }
     const dailyDense = [];
     for (let i = 89; i >= 0; i--) {
@@ -425,7 +433,7 @@ router.get("/forecast", async (req, res) => {
 
     const revMap = {};
     for (const r of revenueRaw)
-      revMap[r.date.toISOString().split("T")[0]] = Number(r.revenue);
+      revMap[dateKey(r.date)] = Number(r.revenue);
     const revDense = [];
     for (let i = 89; i >= 0; i--) {
       const d = new Date(now);
@@ -487,7 +495,7 @@ router.get("/forecast", async (req, res) => {
       },
     );
     const utilRows = utilRaw.map((r) => ({
-      date: r.date.toISOString().split("T")[0],
+      date: dateKey(r.date),
       value: Number(r.util_pct),
     }));
     const utilResult = buildUtilForecast(utilRows);
