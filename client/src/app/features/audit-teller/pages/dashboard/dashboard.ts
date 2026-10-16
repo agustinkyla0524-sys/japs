@@ -1,7 +1,7 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
-import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { environment } from '../../../../../environments/environment';
 
 interface DashboardStats {
@@ -41,7 +41,7 @@ interface AuditorActivity {
 
 @Component({
   selector: 'app-audit-teller-dashboard',
-  imports: [RouterLink, CurrencyPipe, DatePipe, DecimalPipe],
+  imports: [RouterLink, CurrencyPipe, DatePipe],
   templateUrl: './dashboard.html',
 })
 export class AuditTellerDashboard implements OnInit {
@@ -171,15 +171,6 @@ export class AuditTellerDashboard implements OnInit {
 
   maxAuditorCount = computed(() => Math.max(...this.auditorActivity().map((a) => a.count), 1));
 
-  // ── Average audit turnaround (hours between submission and audit) ──────
-  avgTurnaroundHours = computed(() => {
-    const durations = this.allRemittances()
-      .filter((r) => r.approved_at)
-      .map((r) => (new Date(r.approved_at!).getTime() - new Date(r.submitted_at).getTime()) / 3600000)
-      .filter((h) => h >= 0);
-    if (!durations.length) return null;
-    return durations.reduce((sum, h) => sum + h, 0) / durations.length;
-  });
 
   loadStats(): void {
     this.loading.set(true);
