@@ -90,8 +90,6 @@ export class TicketingPage implements OnInit {
   trips = signal<Trip[]>([]);
   selectedTripId = signal<number | null>(null);
   selectedTrip = computed(() => this.trips().find((t) => t.id === this.selectedTripId()) || null);
-  /** Tickets can only be issued while the trip is ongoing. */
-  canIssueTickets = computed(() => this.selectedTrip()?.status === 'ongoing');
   fareSettings = signal<FareSettings | null>(null);
   routeStops = signal<RouteStopPoint[]>([]);
 
@@ -263,10 +261,6 @@ export class TicketingPage implements OnInit {
   }
 
   printTicketSubmit(): void {
-    if (!this.canIssueTickets()) {
-    this.alertService.error('Trip completed', 'This trip has ended. No more tickets can be added.');
-    return;
-  }
     if (this.ticketForm.invalid) {
       this.ticketForm.markAllAsTouched();
       return;
