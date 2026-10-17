@@ -103,18 +103,23 @@
             Trips
           </th>
           <th
-            class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider"
-          >
-            Gross Income
-          </th>
-          <th
-            (click)="setSort('net_collection')"
-            class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-[#1E5AAA] select-none"
-          >
-            <span class="flex items-center gap-1">
-              Net Collection <i [class]="'pi ' + sortIcon('net_collection') + ' text-xs'"></i>
-            </span>
-          </th>
+          class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider"
+        >
+          Gross Income
+        </th>
+        <th
+          (click)="setSort('total_revenue')"
+          class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-[#1E5AAA] select-none"
+        >
+          <span class="flex items-center gap-1">
+            Total Revenue <i [class]="'pi ' + sortIcon('total_revenue') + ' text-xs'"></i>
+          </span>
+        </th>
+        <th
+          class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider"
+        >
+          Cash Received
+        </th>
           <th
             (click)="setSort('status')"
             class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-[#1E5AAA] select-none"
@@ -163,12 +168,33 @@
               <div class="text-xs text-gray-500">{{ remit.BusModel.plate_number }}</div>
             </td>
             <td class="px-5 py-3 text-gray-600">{{ remit.no_of_trips }}</td>
-            <td class="px-5 py-3 font-medium text-green-600">
+            <td class="px-5 py-3 font-medium text-blue-600">
               {{ remit.gross_income | currency: 'PHP' }}
             </td>
-            <td class="px-5 py-3 font-medium text-blue-600">
-              {{ remit.net_collection | currency: 'PHP' }}
+            <td class="px-5 py-3 font-medium text-green-600">
+              {{ totalRevenue(remit) | currency: 'PHP' }}
             </td>
+            <td class="px-5 py-3">
+            @if (remit.cash_received !== null && remit.cash_received !== undefined) {
+              <div class="font-medium text-gray-800">
+                {{ remit.cash_received | currency: 'PHP' }}
+              </div>
+              @let diff = cashDifference(remit)!;
+              @if (diff === 0) {
+                <div class="text-[11px] font-medium text-green-600">Matches</div>
+              } @else if (diff < 0) {
+                <div class="text-[11px] font-medium text-red-600">
+                  Short {{ absValue(diff) | currency: 'PHP' }}
+                </div>
+              } @else {
+                <div class="text-[11px] font-medium text-amber-600">
+                  Over {{ diff | currency: 'PHP' }}
+                </div>
+              }
+            } @else {
+              <span class="text-xs text-gray-400">—</span>
+            }
+          </td>
             <td class="px-5 py-3">
               <span
                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize"

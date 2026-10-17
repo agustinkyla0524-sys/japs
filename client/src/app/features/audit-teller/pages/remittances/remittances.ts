@@ -14,6 +14,8 @@ interface Remittance {
   net_gross: number;
   total_less: number;
   net_collection: number;
+  cash_deposit: number;
+  cash_received: number | null;
   status: 'submitted' | 'approved' | 'rejected';
   resubmitted_at?: string | null;
   submitted_at: string;
@@ -38,7 +40,7 @@ interface Remittance {
   approver: { id: number; first_name: string; last_name: string } | null;
 }
 
-type SortField = 'date' | 'submitted_at' | 'net_collection' | 'status';
+type SortField = 'date' | 'submitted_at' | 'total_revenue' | 'status';
 
 @Component({
   selector: 'app-remittances',
@@ -91,22 +93,18 @@ export class RemittancesPage implements OnInit {
   });
 
   sorted = computed(() => {
-    const field = this.sortField();
-    const dir = this.sortDir();
-    return [...this.filtered()].sort((a, b) => {
-      let av: any = a[field];
-      let bv: any = b[field];
-      if (field === 'net_collection') {
-        av = Number(av);
-        bv = Number(bv);
-      }
-      if (typeof av === 'string') av = av.toLowerCase();
-      if (typeof bv === 'string') bv = bv.toLowerCase();
-      if (av < bv) return dir === 'asc' ? -1 : 1;
-      if (av > bv) return dir === 'asc' ? 1 : -1;
-      return 0;
-    });
+  const field = this.sortField();
+  const dir = this.sortDir();
+  return [...this.filtered()].sort((a, b) => {
+    let av: any = field === 'total_revenue' ? this.totalRevenue(a) : a[field];
+    let bv: any = field === 'total_revenue' ? this.totalRevenue(b) : b[field];
+    if (typeof av === 'string') av = av.toLowerCase();
+    if (typeof bv === 'string') bv = bv.toLowerCase();
+    if (av < bv) return dir === 'asc' ? -1 : 1;
+    if (av > bv) return dir === 'asc' ? 1 : -1;
+    return 0;
   });
+});
 
   totalItems = computed(() => this.sorted().length);
   totalPages = computed(() => Math.max(1, Math.ceil(this.totalItems() / this.pageSize())));
@@ -206,5 +204,21 @@ export class RemittancesPage implements OnInit {
       rejected: 'bg-red-100 text-red-800',
     };
     return badges[status] ?? 'bg-gray-100 text-gray-800';
+  }
+
+    /** Total Revenue = Net Collection + Cash Deposit (same as the review and conductor pages). */
+  totalRevenue(r: Remittance): number {
+    return Number(r.net_collection) + Number(r.cash_deposit);
+  }
+
+  /** Cash received minus total revenue, rounded to centavos. Null if no cash was recorded. */
+  cashDifference(r: Remittance): number | null {
+    if (r.cash_received === null || r.cash_received === undefined) return null;
+    return Math.round((Number(r.cash_received) - this.totalRevenue(r)) * 100) / 100;
+  }
+
+  /** Absolute value, so the template doesn't have to negate it. */
+  absValue(n: number): number {
+    return Math.abs(n);
   }
 }
