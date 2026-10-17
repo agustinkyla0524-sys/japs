@@ -277,7 +277,7 @@ const approveRemittance = async (req, res) => {
       cash_received: cashReceived,
     });
 
-    // In-app notifications: the conductor's bell, then the owner(s).
+    // In-app notifications: the conductor's and driver's bells, then the owner(s).
     await createNotification({
       userId: remittance.conductor_id,
       type: "remittance_approved",
@@ -285,6 +285,15 @@ const approveRemittance = async (req, res) => {
       message: `Your remittance for Bus ${remittance.BusModel?.bus_number ?? ""} on ${remittance.date} was approved.`,
       link: "/conductor/remittances",
     });
+    if (remittance.driver_id) {
+      await createNotification({
+        userId: remittance.driver_id,
+        type: "remittance_approved",
+        title: "Remittance approved",
+        message: `The remittance for Bus ${remittance.BusModel?.bus_number ?? ""} on ${remittance.date} was approved.`,
+        link: "/driver/remittances",
+      });
+    }
     notifyOwnersOfReview(remittance, "approved", auditTellerId, cashReceived);
 
     for (const user of [remittance.driver, remittance.conductor]) {
@@ -339,7 +348,7 @@ const rejectRemittance = async (req, res) => {
       cash_received: cashReceived,
     });
 
-    // In-app notifications: the conductor's bell, then the owner(s).
+    // In-app notifications: the conductor's and driver's bells, then the owner(s).
     await createNotification({
       userId: remittance.conductor_id,
       type: "remittance_rejected",
@@ -347,6 +356,15 @@ const rejectRemittance = async (req, res) => {
       message: `Your remittance for Bus ${remittance.BusModel?.bus_number ?? ""} on ${remittance.date} was rejected.${reason ? " Reason: " + reason : ""}`,
       link: "/conductor/remittances",
     });
+    if (remittance.driver_id) {
+      await createNotification({
+        userId: remittance.driver_id,
+        type: "remittance_rejected",
+        title: "Remittance rejected",
+        message: `The remittance for Bus ${remittance.BusModel?.bus_number ?? ""} on ${remittance.date} was rejected.${reason ? " Reason: " + reason : ""}`,
+        link: "/driver/remittances",
+      });
+    }
     notifyOwnersOfReview(remittance, "rejected", auditTellerId, cashReceived);
 
     for (const user of [remittance.driver, remittance.conductor]) {

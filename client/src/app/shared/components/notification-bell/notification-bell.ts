@@ -43,6 +43,8 @@ export class NotificationBell implements OnInit, OnDestroy {
       case 'remittance_submitted':
       case 'remittance_resubmitted':
         return { icon: 'pi-file', bg: 'bg-blue-100', fg: 'text-[#1E5AAA]' };
+      case 'remittance_pending_reminder':
+        return { icon: 'pi-clock', bg: 'bg-amber-100', fg: 'text-amber-600' };
       case 'schedule_cancelled':
         return { icon: 'pi-calendar-times', bg: 'bg-red-100', fg: 'text-red-600' };
       case 'trip_started':

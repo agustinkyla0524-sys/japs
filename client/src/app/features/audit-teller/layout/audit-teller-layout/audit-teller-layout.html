@@ -70,20 +70,28 @@
     >
       <h1 class="text-base font-semibold text-gray-800">Audit Teller Portal</h1>
 
-      <!-- User -->
-      <div class="flex items-center gap-3">
-        <div
-          class="w-9 h-9 rounded-full bg-[#1E5AAA]/10 text-[#1E5AAA] flex items-center justify-center text-sm font-semibold shrink-0"
-        >
-          {{ initials() }}
-        </div>
-        <div class="leading-tight">
-          <p class="text-sm font-medium text-gray-800">
-            {{ user?.first_name }} {{ user?.last_name }}
-          </p>
-          <p class="text-[11px] font-semibold uppercase tracking-wider text-[#1E5AAA]">
-            Audit Teller
-          </p>
+      <div class="flex items-center gap-4">
+        <!-- Notifications -->
+        <app-notification-bell />
+
+        <!-- Divider -->
+        <div class="h-8 w-px bg-gray-200"></div>
+
+        <!-- User -->
+        <div class="flex items-center gap-3">
+          <div
+            class="w-9 h-9 rounded-full bg-[#1E5AAA]/10 text-[#1E5AAA] flex items-center justify-center text-sm font-semibold shrink-0"
+          >
+            {{ initials() }}
+          </div>
+          <div class="leading-tight">
+            <p class="text-sm font-medium text-gray-800">
+              {{ user?.first_name }} {{ user?.last_name }}
+            </p>
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-[#1E5AAA]">
+              Audit Teller
+            </p>
+          </div>
         </div>
       </div>
     </header>

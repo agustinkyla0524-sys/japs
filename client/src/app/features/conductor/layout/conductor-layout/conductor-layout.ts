@@ -43,6 +43,13 @@ export class ConductorLayout {
     this.sidebarOpen.update((v) => !v);
   }
 
+  /** First letters of the first and last name, for the header avatar. */
+  initials(): string {
+    const first = this.user?.first_name?.[0] ?? '';
+    const last = this.user?.last_name?.[0] ?? '';
+    return (first + last).toUpperCase();
+  }
+
   toggleUserMenu(): void {
     this.userMenuOpen.update((v) => !v);
   }

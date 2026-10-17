@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ConfirmModal } from '../../../../shared/components/confirm-modal/confirm-modal';
+import { NotificationBell } from '../../../../shared/components/notification-bell/notification-bell';
 
 interface NavItem {
   label: string;
@@ -11,7 +12,7 @@ interface NavItem {
 
 @Component({
   selector: 'app-audit-teller-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ConfirmModal],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ConfirmModal, NotificationBell],
   templateUrl: './audit-teller-layout.html',
 })
 export class AuditTellerLayout {
