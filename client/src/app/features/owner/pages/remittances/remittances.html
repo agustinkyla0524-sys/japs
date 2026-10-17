@@ -141,16 +141,14 @@
             >
               Audited By
             </th>
-            <th
-              class="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider"
-            >
-              Details
-            </th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
           @for (remit of paged(); track remit.id) {
-            <tr class="hover:bg-gray-50 transition-colors">
+            <tr
+              [routerLink]="['/owner/remittances', remit.id]"
+              class="hover:bg-gray-50 transition-colors cursor-pointer"
+            >
               <td class="px-3 py-3 text-gray-800 font-medium">
                 {{ remit.date | date: 'MMM dd, yyyy' }}
               </td>
@@ -223,14 +221,6 @@
                 } @else {
                   <span class="text-xs text-gray-400">—</span>
                 }
-              </td>
-              <td class="px-3 py-3">
-                <a
-                  [routerLink]="['/owner/remittances', remit.id]"
-                  class="text-[#1E5AAA] hover:text-[#174d93] font-medium text-sm cursor-pointer"
-                >
-                  View
-                </a>
               </td>
             </tr>
           }

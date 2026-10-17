@@ -70,7 +70,7 @@
       <!-- Mobile card list -->
       <div class="sm:hidden divide-y divide-gray-100">
         @for (r of paged(); track r.id) {
-          <div class="px-4 py-4">
+          <div class="px-4 py-4 cursor-pointer active:bg-gray-50" (click)="openDetails(r)">
             <div class="flex justify-between items-start mb-2">
               <div>
                 <p class="font-bold text-gray-800">{{ r.date | date: 'MMM dd, yyyy' }}</p>
@@ -99,13 +99,6 @@
                 <span class="font-medium text-green-700">{{ revenue(r) | currency: 'PHP' }}</span></span
               >
             </div>
-            <button
-              (click)="openDetails(r)"
-              class="p-1.5 text-gray-400 hover:text-[#1E5AAA] hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-              title="View details"
-            >
-              <i class="pi pi-eye text-sm"></i>
-            </button>
           </div>
         }
       </div>
@@ -152,14 +145,16 @@
                   >Status <i [class]="'pi ' + sortIcon('status') + ' text-xs'"></i
                 ></span>
               </th>
-              <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
             @for (r of paged(); track r.id) {
-              <tr class="hover:bg-gray-50 transition-colors">
+              <tr
+                  (click)="openDetails(r)"
+                  (keydown.enter)="openDetails(r)"
+                  tabindex="0"
+                  class="hover:bg-gray-50 transition-colors cursor-pointer focus:outline-none focus:bg-gray-50"
+                >
                 <td class="px-5 py-3 font-medium text-gray-800">
                   {{ r.date | date: 'MMM dd, yyyy' }}
                 </td>
@@ -184,15 +179,6 @@
                   >
                     {{ r.status === 'submitted' ? 'Pending' : r.status }}
                   </span>
-                </td>
-                <td class="px-5 py-3">
-                  <button
-                    (click)="openDetails(r)"
-                    class="p-1.5 text-gray-400 hover:text-[#1E5AAA] hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                    title="View details"
-                  >
-                    <i class="pi pi-eye text-sm"></i>
-                  </button>
                 </td>
               </tr>
             }

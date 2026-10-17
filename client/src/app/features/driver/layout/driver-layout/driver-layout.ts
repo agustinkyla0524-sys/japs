@@ -29,6 +29,13 @@ export class DriverLayout {
     { label: 'My Remittances', icon: 'pi-file-check', route: 'remittances' },
   ];
 
+  /** First letters of the first and last name, for the header avatar. */
+  initials(): string {
+    const first = this.user?.first_name?.[0] ?? '';
+    const last = this.user?.last_name?.[0] ?? '';
+    return (first + last).toUpperCase();
+  }
+
   toggleSidebar(): void {
     this.sidebarOpen.update((v) => !v);
   }

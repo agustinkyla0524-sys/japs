@@ -1,6 +1,6 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { RouterLink, ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { environment } from '../../../../../environments/environment';
 import { TablePagination } from '../../../../shared/components/table-pagination/table-pagination';
@@ -44,12 +44,13 @@ type SortField = 'date' | 'submitted_at' | 'total_revenue' | 'status';
 
 @Component({
   selector: 'app-remittances',
-  imports: [RouterLink, CurrencyPipe, DatePipe, TablePagination],
+  imports: [CurrencyPipe, DatePipe, TablePagination],
   templateUrl: './remittances.html',
 })
 export class RemittancesPage implements OnInit {
   private http = inject(HttpClient);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private readonly API = `${environment.apiUrl}/api/audit-teller`;
 
   private allRemittances = signal<Remittance[]>([]);
@@ -195,6 +196,11 @@ export class RemittancesPage implements OnInit {
   onPageSizeChange(size: number): void {
     this.pageSize.set(size);
     this.currentPage.set(1);
+  }
+
+  /** Row click: open the review page for this remittance. */
+  openReview(id: number): void {
+    this.router.navigate(['/audit-teller/remittances', id]);
   }
 
   getStatusBadge(status: string): string {

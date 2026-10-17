@@ -17,6 +17,7 @@ const {
   buildUtilForecast,
 } = require("../services/forecast/buildForecast");
 const { buildInsights } = require("../services/insights/buildInsights");
+const { findRemittanceDetail } = require("../services/remittance/findRemittanceDetail");
 
 // Date columns can come back as "YYYY-MM-DD" strings or Date objects.
 const dateKey = (d) =>
@@ -312,44 +313,10 @@ router.get("/remittances", async (req, res) => {
 });
 
 // GET /api/owner/remittances/:id
+// Full detail including each trip's tickets (same query the conductor page uses).
 router.get("/remittances/:id", async (req, res) => {
   try {
-    const remittance = await Remittance.findByPk(req.params.id, {
-      include: [
-        { model: BusModel, attributes: ["id", "bus_number", "plate_number"] },
-        {
-          model: User,
-          as: "driver",
-          attributes: ["id", "first_name", "last_name", "employee_id"],
-        },
-        {
-          model: User,
-          as: "conductor",
-          attributes: ["id", "first_name", "last_name", "employee_id"],
-        },
-        {
-          model: User,
-          as: "approver",
-          attributes: ["id", "first_name", "last_name"],
-        },
-        {
-          model: RemittanceExpense,
-          attributes: ["id", "expense_type", "amount"],
-        },
-        {
-          model: Trip,
-          attributes: [
-            "id",
-            "trip_number",
-            "departure_time",
-            "grand_total",
-            "ticket_number_start",
-            "ticket_number_end",
-          ],
-          include: [{ model: Route, attributes: ["origin", "destination"] }],
-        },
-      ],
-    });
+    const remittance = await findRemittanceDetail({ id: req.params.id });
     if (!remittance)
       return res.status(404).json({ message: "Remittance not found." });
     return res.json(remittance);

@@ -88,7 +88,7 @@
     </div>
   } @else {
     <div class="overflow-x-auto">
-    <table class="w-full text-sm">
+    <table class="w-full text-sm whitespace-nowrap">
       <thead class="bg-gray-50 border-b border-gray-200">
         <tr>
           <th
@@ -157,7 +157,12 @@
             </td>
             <td class="px-5 py-3 text-gray-600">
               @if (trip.Route) {
-                {{ trip.Route.origin }} → {{ trip.Route.destination }}
+                <div
+                  class="max-w-[260px] truncate"
+                  [title]="trip.Route.origin + ' → ' + trip.Route.destination"
+                >
+                  {{ trip.Route.origin }} → {{ trip.Route.destination }}
+                </div>
               } @else {
                 —
               }
