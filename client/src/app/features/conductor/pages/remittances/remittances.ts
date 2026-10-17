@@ -134,7 +134,7 @@ const toDateTimeLocal = (d: string | Date): string => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 
-type SortField = 'date' | 'submitted_at' | 'net_collection' | 'status';
+type SortField = 'date' | 'submitted_at' | 'net_collection' | 'total_revenue' | 'status';
 type Tab = 'list' | 'submit';
 
 @Component({
@@ -204,6 +204,7 @@ export class ConductorRemittancesPage implements OnInit {
   );
   editTotalLess = computed(() => sumLessFields(this.editValues()));
   editNetCollection = computed(() => this.editNetGross() - this.editTotalLess());
+  editTotalRevenue = computed(() => this.editNetCollection() + Number(this.editValues()?.cash_deposit || 0));
 
   constructor() {
     this.remittanceForm = this.createRemittanceForm();
@@ -232,12 +233,15 @@ export class ConductorRemittancesPage implements OnInit {
   }
 
   ngOnInit(): void {
-    this.loadRemittances();
-    this.loadBuses();
-    this.remittanceForm.valueChanges.subscribe((v) => this.formValues.set(v));
-    this.formValues.set(this.remittanceForm.value);
-    this.editForm.valueChanges.subscribe((v) => this.editValues.set(v));
-  }
+  this.loadRemittances();
+  this.loadBuses();
+  this.remittanceForm.valueChanges.subscribe((v) => {
+    this.formValues.set(v);
+    this.autoCalculateCommissions();
+  });
+  this.formValues.set(this.remittanceForm.value);
+  this.editForm.valueChanges.subscribe((v) => this.editValues.set(v));
+}
 
   setTab(tab: Tab): void {
     this.activeTab.set(tab);
@@ -279,8 +283,8 @@ export class ConductorRemittancesPage implements OnInit {
     const field = this.sortField();
     const dir = this.sortDir();
     return [...this.filtered()].sort((a, b) => {
-      let av: any = a[field];
-      let bv: any = b[field];
+      let av: any = field === 'total_revenue' ? this.rowRevenue(a) : a[field];
+      let bv: any = field === 'total_revenue' ? this.rowRevenue(b) : b[field];
       if (field === 'net_collection') {
         av = Number(av);
         bv = Number(bv);
@@ -370,6 +374,10 @@ export class ConductorRemittancesPage implements OnInit {
     if (r.status !== 'submitted') return r.status;
     return r.resubmitted_at ? 'Updated' : 'Pending';
   }
+  /** Total Revenue for a list row: Net Collection + Cash Deposit. */
+  rowRevenue(r: Remittance): number {
+    return Number(r.net_collection) + Number(r.cash_deposit);
+  }
 
   /** Opens the details panel, then loads the tickets issued on each of its trips. */
   openDetails(r: Remittance): void {
@@ -387,6 +395,10 @@ export class ConductorRemittancesPage implements OnInit {
   closeDetails(): void {
     this.editing.set(false);
     this.selected.set(null);
+  }
+  selectedTotalRevenue(): number {
+    const r = this.selected();
+    return r ? Number(r.net_collection) + Number(r.cash_deposit) : 0;
   }
 
   // ── Edit & resubmit a rejected remittance ──
@@ -644,12 +656,21 @@ export class ConductorRemittancesPage implements OnInit {
 
   selectedTrips = computed(() => this.allTrips().filter((t) => this.selectedTripIds().has(t.id)));
 
+  /** Commissions are a share of Net Gross (gross income minus expenses).
+ *  A field the conductor has typed into by hand is left alone. */
   autoCalculateCommissions(): void {
-    const gross = this.grossIncome();
-    this.remittanceForm.patchValue({
-      driver_commission: parseFloat((gross * 0.1).toFixed(2)),
-      conductor_commission: parseFloat((gross * 0.08).toFixed(2)),
-    });
+    const net = Math.max(0, this.netGross());
+    const driver = parseFloat((net * 0.12).toFixed(2));
+    const conductor = parseFloat((net * 0.1).toFixed(2));
+    const form = this.remittanceForm;
+    const patch: Record<string, number> = {};
+    if (!form.get('driver_commission')!.dirty && form.value.driver_commission !== driver) {
+      patch['driver_commission'] = driver;
+    }
+    if (!form.get('conductor_commission')!.dirty && form.value.conductor_commission !== conductor) {
+      patch['conductor_commission'] = conductor;
+    }
+    if (Object.keys(patch).length) form.patchValue(patch);
   }
 
   grossIncome = computed(() => this.selectedTrips().reduce((sum, t) => sum + this.tripAmount(t), 0));
@@ -683,6 +704,7 @@ export class ConductorRemittancesPage implements OnInit {
   });
 
   netCollection = computed(() => this.netGross() - this.totalLess());
+  totalRevenue = computed(() => this.netCollection() + Number(this.formValues().cash_deposit || 0));
 
   private buildExpensesPayload(f: any = this.remittanceForm.value) {
     const map: Record<string, number> = {

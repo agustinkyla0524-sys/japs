@@ -771,6 +771,24 @@ const submitRemittance = async (req, res) => {
         .json({ message: "Missing required remittance fields." });
     }
 
+    const isValidAmount = (n) => Number.isFinite(n) && n >= 0;
+    const amountsOk = [
+      driver_commission,
+      conductor_commission,
+      bonus_allowance,
+      other_deductions,
+      cash_deposit,
+      driver_officer_share,
+      conductor_officer_share,
+    ].every((v) => isValidAmount(Number(v ?? 0)));
+    const expensesOk = expenses.every(
+      (e) => EXPENSE_TYPES.includes(e?.expense_type) && isValidAmount(Number(e.amount)),
+    );
+    if (!amountsOk || !expensesOk) {
+      await transaction.rollback();
+      return res.status(400).json({ message: "Enter valid amounts (0 or more)." });
+    }
+
     // 1. Fetch completed trips to calculate actual gross income
     const trips = await Trip.findAll({
       where: {
