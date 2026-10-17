@@ -208,6 +208,14 @@ const approveRemittance = async (req, res) => {
     const { id } = req.params;
     const auditTellerId = req.user.id;
 
+    const cashReceived =
+    req.body.cash_received === null || req.body.cash_received === undefined || req.body.cash_received === ""
+      ? null
+      : Number(req.body.cash_received);
+  if (cashReceived !== null && (!Number.isFinite(cashReceived) || cashReceived < 0)) {
+    return res.status(400).json({ message: "Invalid cash received amount." });
+  }
+
     const remittance = await Remittance.findByPk(id, {
       include: [
         { model: BusModel, attributes: ["id", "bus_number"] },
@@ -223,6 +231,7 @@ const approveRemittance = async (req, res) => {
       status: "approved",
       approved_by: auditTellerId,
       approved_at: new Date(),
+      cash_received: cashReceived,
     });
 
     for (const user of [remittance.driver, remittance.conductor]) {
@@ -250,8 +259,17 @@ const approveRemittance = async (req, res) => {
 const rejectRemittance = async (req, res) => {
   try {
     const { id } = req.params;
-    const { reason } = req.body;
+    const { reason, cash_received } = req.body;            // CHANGE 1: added cash_received
     const auditTellerId = req.user.id;
+
+    // CHANGE 2: convert cash_received to a number (or null if empty)
+    const cashReceived =
+      cash_received === null || cash_received === undefined || cash_received === ""
+        ? null
+        : Number(cash_received);
+    if (cashReceived !== null && (!Number.isFinite(cashReceived) || cashReceived < 0)) {
+      return res.status(400).json({ message: "Invalid cash received amount." });
+    }
 
     const remittance = await Remittance.findByPk(id, {
       include: [
@@ -269,6 +287,7 @@ const rejectRemittance = async (req, res) => {
       approved_by: auditTellerId,
       approved_at: new Date(),
       teller_remarks: reason || null,
+      cash_received: cashReceived,                         // CHANGE 3: save it
     });
 
     for (const user of [remittance.driver, remittance.conductor]) {
@@ -291,7 +310,6 @@ const rejectRemittance = async (req, res) => {
     return res.status(500).json({ message: "Internal server error." });
   }
 };
-
 module.exports = {
   getStats,
   getRemittances,
