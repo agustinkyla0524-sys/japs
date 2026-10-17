@@ -4,7 +4,6 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { AlertService } from '../../../../core/services/alert.service';
 import { ConfirmModal } from '../../../../shared/components/confirm-modal/confirm-modal';
 import { NotificationBell } from '../../../../shared/components/notification-bell/notification-bell';
-imports: [RouterOutlet, RouterLink, RouterLinkActive, ConfirmModal, NotificationBell];
 
 interface NavItem {
   label: string;
@@ -44,6 +43,13 @@ export class OwnerLayout {
     if (this.user?.role === 'secretary') return 'Secretary';
     if (this.user?.role === 'admin_staff') return 'Admin Staff';
     return 'Owner';
+  }
+
+  /** First letters of the first and last name, for the header avatar. */
+  initials(): string {
+    const first = this.user?.first_name?.[0] ?? '';
+    const last = this.user?.last_name?.[0] ?? '';
+    return (first + last).toUpperCase();
   }
 
   logoutMessage(): string {

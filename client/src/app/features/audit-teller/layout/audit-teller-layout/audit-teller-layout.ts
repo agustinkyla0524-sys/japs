@@ -31,6 +31,13 @@ export class AuditTellerLayout {
     this.sidebarOpen.update((v) => !v);
   }
 
+  /** First letters of the first and last name, for the header avatar. */
+  initials(): string {
+    const first = this.user?.first_name?.[0] ?? '';
+    const last = this.user?.last_name?.[0] ?? '';
+    return (first + last).toUpperCase();
+  }
+
   confirmLogout(): void {
     this.showLogoutConfirm.set(true);
   }

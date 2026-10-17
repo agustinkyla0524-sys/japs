@@ -15,6 +15,7 @@ interface RemittanceSummary {
   id: number;
   date: string;
   net_collection: number;
+  cash_received: number | null;
   status: 'submitted' | 'approved' | 'rejected';
   resubmitted_at?: string | null;
   submitted_at: string;
@@ -170,7 +171,6 @@ export class AuditTellerDashboard implements OnInit {
   });
 
   maxAuditorCount = computed(() => Math.max(...this.auditorActivity().map((a) => a.count), 1));
-
 
   loadStats(): void {
     this.loading.set(true);
