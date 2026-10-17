@@ -66,7 +66,7 @@ export class Schedules implements OnInit {
   buses = signal<ScheduleBus[]>([]);
   routes = signal<ScheduleRoute[]>([]);
 
-  startDate = signal<string>(this.today());
+  startDate = signal<string>(this.firstOfMonth());
   endDate = signal<string>(this.today());
 
   filterBus = signal('');
@@ -123,6 +123,13 @@ export class Schedules implements OnInit {
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   }
+
+  /** First day of the current month (YYYY-MM-DD) in the browser's local time. */
+  private firstOfMonth(): string {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-01`;
+}
 
   get dateLabel(): string {
     const fmt = (s: string) =>
@@ -188,7 +195,7 @@ export class Schedules implements OnInit {
   // ── Modal ──
   openAdd(): void {
     this.selectedBus.set(null);
-    this.scheduleDate.set(this.startDate());
+    this.scheduleDate.set(this.today());
     this.tripRows.set([this.newRow()]);
     this.showModal.set(true);
   }
