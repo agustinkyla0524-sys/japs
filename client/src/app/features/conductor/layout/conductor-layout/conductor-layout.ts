@@ -4,6 +4,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { AlertService } from '../../../../core/services/alert.service';
 import { PrinterSetupService } from '../../../../core/services/printer-setup.service';
 import { ConfirmModal } from '../../../../shared/components/confirm-modal/confirm-modal';
+import { NotificationBell } from '../../../../shared/components/notification-bell/notification-bell';
 
 interface NavItem {
   label: string;
@@ -14,7 +15,7 @@ interface NavItem {
 
 @Component({
   selector: 'app-conductor-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ConfirmModal],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ConfirmModal, NotificationBell],
   templateUrl: './conductor-layout.html',
   styleUrl: './conductor-layout.css',
 })

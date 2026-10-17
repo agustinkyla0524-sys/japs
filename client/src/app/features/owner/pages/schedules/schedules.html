@@ -182,13 +182,6 @@
             <td class="px-5 py-3 text-gray-600 whitespace-nowrap">
               @if (trip.actual_departure_time) {
                 {{ trip.actual_departure_time | date: 'h:mm a' }}
-                @if (lateMinutes(trip); as late) {
-                  <span
-                    class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700"
-                    title="Minutes after the scheduled departure"
-                    >late {{ late }}m</span
-                  >
-                }
               } @else {
                 <span class="text-gray-300">—</span>
               }

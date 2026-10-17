@@ -332,14 +332,4 @@ export class Schedules implements OnInit {
     const r = this.routes().find((x) => x.id === routeId);
     return r ? `${r.origin} → ${r.destination}` : '—';
   }
-
-  /** Minutes the trip actually left after its scheduled time, or 0 if on time. */
-  lateMinutes(trip: ScheduleTrip): number {
-    if (!trip.actual_departure_time) return 0;
-    const diff = Math.round(
-      (new Date(trip.actual_departure_time).getTime() - new Date(trip.departure_time).getTime()) /
-        60000,
-    );
-    return diff > this.LATE_THRESHOLD_MINUTES ? diff : 0;
-  }
 }
