@@ -270,7 +270,7 @@
             <select formControlName="driver_id"
               class="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#1E5AAA] focus:ring-2 focus:ring-[#1E5AAA]/20 border-gray-300 bg-white">
               <option [ngValue]="null">— Unassigned —</option>
-              @for (d of drivers(); track d.id) {
+              @for (d of availableDrivers(); track d.id) {
                 <option [ngValue]="d.id">{{ d.first_name }} {{ d.last_name }} ({{ d.employee_id }})</option>
               }
             </select>
@@ -280,7 +280,7 @@
             <select formControlName="conductor_id"
               class="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#1E5AAA] focus:ring-2 focus:ring-[#1E5AAA]/20 border-gray-300 bg-white">
               <option [ngValue]="null">— Unassigned —</option>
-              @for (c of conductors(); track c.id) {
+              @for (c of availableConductors(); track c.id) {
                 <option [ngValue]="c.id">{{ c.first_name }} {{ c.last_name }} ({{ c.employee_id }})</option>
               }
             </select>
