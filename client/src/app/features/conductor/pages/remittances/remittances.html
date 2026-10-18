@@ -1099,11 +1099,11 @@
           <div class="pl-3 space-y-1.5 border-l-2 border-amber-100 text-xs">
             <div class="flex justify-between">
               <span class="text-gray-400">Driver Commission</span>
-              <span class="text-amber-600">-{{ selected()!.driver_commission | currency: 'PHP' }}</span>
+              <span class="text-amber-600">-{{ selected()!.driver_commission | currency: 'PHP' : 'symbol' : '1.0-0' }}.00</span>
             </div>
             <div class="flex justify-between">
               <span class="text-gray-400">Conductor Commission</span>
-              <span class="text-amber-600">-{{ selected()!.conductor_commission | currency: 'PHP' }}</span>
+              <span class="text-amber-600">-{{ selected()!.conductor_commission | currency: 'PHP' : 'symbol' : '1.0-0' }}.00</span>
             </div>
             @if (+selected()!.bonus_allowance > 0) {
               <div class="flex justify-between">

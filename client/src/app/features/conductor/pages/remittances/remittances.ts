@@ -656,12 +656,12 @@ export class ConductorRemittancesPage implements OnInit {
 
   selectedTrips = computed(() => this.allTrips().filter((t) => this.selectedTripIds().has(t.id)));
 
-  /** Commissions are a share of Net Gross (gross income minus expenses).
+  /** Commissions are a share of Net Gross (gross income minus expenses), rounded to whole pesos.
  *  A field the conductor has typed into by hand is left alone. */
   autoCalculateCommissions(): void {
     const net = Math.max(0, this.netGross());
-    const driver = parseFloat((net * 0.12).toFixed(2));
-    const conductor = parseFloat((net * 0.1).toFixed(2));
+    const driver = Math.round(net * 0.12);
+    const conductor = Math.round(net * 0.1);
     const form = this.remittanceForm;
     const patch: Record<string, number> = {};
     if (!form.get('driver_commission')!.dirty && form.value.driver_commission !== driver) {

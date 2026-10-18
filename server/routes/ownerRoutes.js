@@ -23,6 +23,12 @@ const { findRemittanceDetail } = require("../services/remittance/findRemittanceD
 const dateKey = (d) =>
   typeof d === "string" ? d.slice(0, 10) : new Date(d).toISOString().split("T")[0];
 
+// Local (server timezone) YYYY-MM-DD — toISOString() would shift the day in UTC+8.
+const localKey = (d) => {
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+
 const router = express.Router();
 router.use(authenticate, authorize(...OWNER_LEVEL_ROLES));
 
@@ -204,6 +210,7 @@ router.get("/dashboard", async (req, res) => {
       `SELECT EXTRACT(YEAR FROM submitted_at) AS year,
               EXTRACT(MONTH FROM submitted_at) AS month,
               SUM(net_collection) AS net_collection,
+              SUM(net_collection + cash_deposit) AS total_revenue,
               SUM(gross_income) AS gross_income
        FROM remittances
        WHERE status = 'approved' AND submitted_at >= :since
@@ -211,6 +218,35 @@ router.get("/dashboard", async (req, res) => {
        ORDER BY year ASC, month ASC`,
       {
         replacements: { since: twelveMonthsAgo },
+        type: sequelize.QueryTypes.SELECT,
+      },
+    );
+
+    // ── Remittances in the range: approved revenue + cash variance ─────────
+    const rangeFromKey = localKey(rangeStart);
+    const rangeToKey = localKey(rangeEnd);
+    const [remitRange] = await sequelize.query(
+      `SELECT COALESCE(SUM(net_collection + cash_deposit), 0) AS revenue,
+              COALESCE(SUM(cash_received - (net_collection + cash_deposit))
+                FILTER (WHERE cash_received IS NOT NULL), 0) AS cash_variance
+       FROM remittances
+       WHERE status = 'approved' AND date BETWEEN :from AND :to`,
+      {
+        replacements: { from: rangeFromKey, to: rangeToKey },
+        type: sequelize.QueryTypes.SELECT,
+      },
+    );
+
+    // ── Daily total revenue of approved remittances in the range ──────────
+    const remittanceDaily = await sequelize.query(
+      `SELECT to_char(date, 'YYYY-MM-DD') AS date,
+              SUM(net_collection + cash_deposit) AS total_revenue
+       FROM remittances
+       WHERE status = 'approved' AND date BETWEEN :from AND :to
+       GROUP BY date
+       ORDER BY date ASC`,
+      {
+        replacements: { from: rangeFromKey, to: rangeToKey },
         type: sequelize.QueryTypes.SELECT,
       },
     );
@@ -253,8 +289,8 @@ router.get("/dashboard", async (req, res) => {
     return res.json({
       insights,
       range: {
-        from: rangeStart.toISOString().split("T")[0],
-        to: rangeEnd.toISOString().split("T")[0],
+        from: rangeFromKey,
+        to: rangeToKey,
       },
       kpi: {
         net_gross_in_range: netGrossInRange,
@@ -268,12 +304,16 @@ router.get("/dashboard", async (req, res) => {
         remittance_total: remittanceTotal,
         remittance_pending: remittancePending,
         remittance_rejected: remittanceRejected,
+        remittance_revenue_in_range: Number(remitRange?.revenue) || 0,
+        remittance_cash_variance_in_range:
+          Math.round((Number(remitRange?.cash_variance) || 0) * 100) / 100,
       },
       daily_passengers: dailyPassengersRaw,
       route_profit: routeProfit,
       peak_hours: peakHoursRaw,
       weekday_weekend: weekdayWeekendRaw,
       remittance_trend: remittanceTrend,
+      remittance_daily: remittanceDaily,
     });
   } catch (error) {
     console.error("Dashboard error:", error);
@@ -340,7 +380,7 @@ router.get("/forecast", async (req, res) => {
     const ninetyDaysAgo = new Date(now);
     ninetyDaysAgo.setDate(now.getDate() - 90);
     const dailyRaw = await sequelize.query(
-      `SELECT t.departure_time::date AS date, COALESCE(SUM(pc.count),0) AS total
+      `SELECT to_char(t.departure_time::date, 'YYYY-MM-DD') AS date, COALESCE(SUM(pc.count),0) AS total
        FROM trips t
        LEFT JOIN passenger_counts pc ON pc.trip_id = t.id
        WHERE t.departure_time >= :since
@@ -361,7 +401,7 @@ router.get("/forecast", async (req, res) => {
     for (let i = 89; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
-      const key = d.toISOString().split("T")[0];
+      const key = localKey(d);
       dailyDense.push({
         date: key,
         passengers: dailyMap[key] ?? 0,
@@ -386,26 +426,27 @@ router.get("/forecast", async (req, res) => {
     }));
 
     // ── 5. Revenue data – last 90 days ───────────────────────────────────
+    // Total Revenue of approved remittances (Net Collection + Cash Deposit), by remittance date.
     const revenueRaw = await sequelize.query(
-      `SELECT t.departure_time::date AS date, COALESCE(SUM(t.grand_total),0) AS revenue
-       FROM trips t
-       WHERE t.departure_time >= :since AND t.status = 'completed'
-       GROUP BY t.departure_time::date
-       ORDER BY t.departure_time::date ASC`,
+      `SELECT to_char(date, 'YYYY-MM-DD') AS date,
+              COALESCE(SUM(net_collection + cash_deposit), 0) AS revenue
+       FROM remittances
+       WHERE status = 'approved' AND date >= :since
+       GROUP BY date
+       ORDER BY date ASC`,
       {
-        replacements: { since: ninetyDaysAgo },
+        replacements: { since: localKey(ninetyDaysAgo) },
         type: sequelize.QueryTypes.SELECT,
       },
     );
 
     const revMap = {};
-    for (const r of revenueRaw)
-      revMap[dateKey(r.date)] = Number(r.revenue);
+    for (const r of revenueRaw) revMap[r.date] = Number(r.revenue);
     const revDense = [];
     for (let i = 89; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
-      const key = d.toISOString().split("T")[0];
+      const key = localKey(d);
       revDense.push({ date: key, value: revMap[key] ?? 0 });
     }
     const revenueResult = buildDailyForecast(revDense, {
@@ -421,9 +462,9 @@ router.get("/forecast", async (req, res) => {
     const predictedRevenueTomorrow = revenueForecast7[0]?.predicted ?? 0;
 
     // Growth % relative to today's actual
-    const todayKey = now.toISOString().split("T")[0];
+    const todayKey = localKey(now);
     const todayPassengers = dailyMap[todayKey] ?? 0;
-    const todayRevenue = revMap[todayKey] ?? 0;
+    const todayRevenue = revMap[localKey(now)] ?? 0;
     const passengerGrowthTomorrow =
       todayPassengers > 0
         ? (
@@ -500,6 +541,19 @@ router.get("/forecast", async (req, res) => {
     }));
     const demandSeries = [...last7Actual, ...next7Forecast];
 
+    // Same 14 days for revenue (last 7 actual + next 7 forecast), so the dashboard can
+    // draw revenue as a second line over the passenger demand chart.
+    const revenueSeries = [
+      ...revDense
+        .slice(-7)
+        .map((d) => ({ date: d.date, value: d.value, type: "actual" })),
+      ...revenueForecast7.map((d) => ({
+        date: d.date,
+        value: d.predicted,
+        type: "forecast",
+      })),
+    ];
+
     return res.json({
       kpi_forecast: {
         predicted_passengers_tomorrow: predictedPassengersTomorrow,
@@ -509,6 +563,7 @@ router.get("/forecast", async (req, res) => {
         predicted_bus_utilisation_tomorrow: predictedUtilTomorrow,
       },
       demand_series: demandSeries,
+      revenue_series: revenueSeries,
       revenue_forecast_7d: revenueForecast7,
       peak_hours_forecast: peakForecast,
       seasonal_factors: seasonalFactors.map((f, i) => ({
