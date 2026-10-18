@@ -215,15 +215,14 @@ export class DriverRemittancesPage implements OnInit {
 
   formatExpenseType(type: string): string {
     const labels: Record<string, string> = {
-      officer: 'Officer / Police',
+      officer: 'Officer',
       toll_fees: 'Toll Fees',
       parking: 'Parking',
       ppa: 'PPA (Port Authority)',
       washing: 'Bus Washing',
-      diesel: 'Diesel / Fuel',
+      diesel: 'Diesel',
       caller_grand_terminal: 'Caller (Grand Terminal)',
       caller_calamba_terminal: 'Caller (Calamba Terminal)',
-      pwd: 'PWD / Senior Discount',
       miscellaneous: 'Miscellaneous',
     };
     return labels[type] ?? type;

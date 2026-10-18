@@ -27,17 +27,21 @@ interface RemittanceSummary {
 
 interface DayBucket {
   key: string;
-  label: string;
+  dow: string; // Mon, Tue, …
+  short: string; // 10/18
+  title: string; // Sat 10/18
+  weekend: boolean;
   submitted: number;
   approved: number;
   rejected: number;
-  netCollection: number;
+  resubmitted: number; // back in the queue after the conductor corrected a rejection
+  cashRemitted: number; // cash received on approved remittances
 }
 
 interface AuditorActivity {
   name: string;
   count: number;
-  netCollection: number;
+  cashRemitted: number; // cash received on the remittances this auditor approved
 }
 
 @Component({
@@ -94,7 +98,7 @@ export class AuditTellerDashboard implements OnInit {
     return `conic-gradient(#22c55e 0% ${a}%, #ef4444 ${a}% ${b}%, #f59e0b ${b}% 100%)`;
   });
 
-  // ── Last 14 days trend (submissions, audits, net collection) ───────────
+  // ── Last 14 days (cash remitted) / last 7 days (submissions) ───────────
   private localDateStr(d: Date): string {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -102,58 +106,101 @@ export class AuditTellerDashboard implements OnInit {
     return `${y}-${m}-${day}`;
   }
 
+  /** "YYYY-MM-DD" as-is; a full timestamp is converted to the local calendar day. */
+  private dayKey(value: string | null | undefined): string {
+    if (!value) return '';
+    if (value.length === 10) return value;
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? value.slice(0, 10) : this.localDateStr(d);
+  }
+
   last14Days = computed<DayBucket[]>(() => {
+    const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const buckets = new Map<string, DayBucket>();
     const today = new Date();
     for (let i = 13; i >= 0; i--) {
       const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
       const key = this.localDateStr(d);
+      const short = `${d.getMonth() + 1}/${d.getDate()}`;
       buckets.set(key, {
         key,
-        label: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        dow: names[d.getDay()],
+        short,
+        title: `${names[d.getDay()]} ${short}`,
+        weekend: d.getDay() === 0 || d.getDay() === 6,
         submitted: 0,
         approved: 0,
         rejected: 0,
-        netCollection: 0,
+        resubmitted: 0,
+        cashRemitted: 0,
       });
     }
     for (const r of this.allRemittances()) {
-      const key = r.date?.slice(0, 10);
-      const bucket = buckets.get(key);
+      const bucket = buckets.get(this.dayKey(r.date));
       if (!bucket) continue;
+      // Remittances still waiting for a first review are left out of the submissions chart.
+      if (r.status === 'submitted' && !r.resubmitted_at) continue;
       bucket.submitted++;
       if (r.status === 'approved') {
         bucket.approved++;
-        bucket.netCollection += Number(r.net_collection) || 0;
+        if (r.cash_received !== null && r.cash_received !== undefined) {
+          bucket.cashRemitted += Number(r.cash_received) || 0;
+        }
       } else if (r.status === 'rejected') {
         bucket.rejected++;
+      } else {
+        bucket.resubmitted++;
       }
     }
     return [...buckets.values()];
   });
 
-  submittedTrendValues = computed(() => this.last14Days().map((d) => d.submitted));
-  maxSubmittedTrend = computed(() => Math.max(...this.submittedTrendValues(), 1));
-  netCollectionTrendValues = computed(() => this.last14Days().map((d) => d.netCollection));
+  last7Days = computed(() => this.last14Days().slice(-7));
 
-  private normalise(values: number[], height: number): number[] {
-    const max = Math.max(...values, 1);
-    return values.map((v) => height - (v / max) * height);
-  }
+  // Submissions bar chart (last 7 days)
+  submittedTotal = computed(() => this.last7Days().reduce((s, d) => s + d.submitted, 0));
+  maxSubmitted = computed(() => Math.max(...this.last7Days().map((d) => d.submitted), 1));
+  subHoverIndex = signal<number | null>(null);
+  subHovered = computed(() => {
+    const i = this.subHoverIndex();
+    const days = this.last7Days();
+    if (i === null || !days[i]) return null;
+    return { bar: days[i], xPct: ((i + 0.5) / days.length) * 100 };
+  });
 
-  polyline(values: number[], width: number, height: number): string {
-    if (!values.length) return '';
-    const ys = this.normalise(values, height);
-    const step = width / Math.max(values.length - 1, 1);
-    return ys.map((y, i) => `${i * step},${y}`).join(' ');
-  }
+  // Cash remitted line chart, last 14 days (points sit at the centre of each day's hover zone)
+  private readonly CHART_W = 400;
+  cashTotal = computed(() => this.last14Days().reduce((s, d) => s + d.cashRemitted, 0));
+  cashPoints = computed(() => {
+    const days = this.last14Days();
+    const max = Math.max(...days.map((d) => d.cashRemitted), 1);
+    return days.map((d, i) => {
+      const xPct = ((i + 0.5) / days.length) * 100;
+      return { xPct, x: (xPct / 100) * this.CHART_W, y: 94 - (d.cashRemitted / max) * 88 };
+    });
+  });
+  cashLine = computed(() =>
+    this.cashPoints()
+      .map((p) => `${p.x},${p.y}`)
+      .join(' '),
+  );
+  cashArea = computed(() => {
+    const pts = this.cashPoints();
+    if (!pts.length) return '';
+    const line = pts.map((p) => `${p.x},${p.y}`).join(' L');
+    return `M${pts[0].x},100 L${line} L${pts[pts.length - 1].x},100 Z`;
+  });
+  cashHoverIndex = signal<number | null>(null);
+  cashHovered = computed(() => {
+    const i = this.cashHoverIndex();
+    const days = this.last14Days();
+    if (i === null || !days[i]) return null;
+    return { day: days[i], point: this.cashPoints()[i] };
+  });
 
-  areaPath(values: number[], width: number, height: number): string {
-    if (!values.length) return '';
-    const ys = this.normalise(values, height);
-    const step = width / Math.max(values.length - 1, 1);
-    const line = ys.map((y, i) => `${i * step},${y}`).join(' L');
-    return `M0,${height} L${line} L${(values.length - 1) * step},${height} Z`;
+  /** Keeps a tooltip inside the card near the left/right edges. */
+  tooltipLeft(xPct: number): number {
+    return Math.min(86, Math.max(14, xPct));
   }
 
   // ── Auditor activity ────────────────────────────────────────────────────
@@ -162,9 +209,11 @@ export class AuditTellerDashboard implements OnInit {
     for (const r of this.allRemittances()) {
       if (!r.approver) continue;
       const name = `${r.approver.first_name} ${r.approver.last_name}`;
-      const entry = byAuditor.get(name) ?? { name, count: 0, netCollection: 0 };
+      const entry = byAuditor.get(name) ?? { name, count: 0, cashRemitted: 0 };
       entry.count++;
-      entry.netCollection += Number(r.net_collection) || 0;
+      if (r.cash_received !== null && r.cash_received !== undefined) {
+        entry.cashRemitted += Number(r.cash_received) || 0;
+      }
       byAuditor.set(name, entry);
     }
     return [...byAuditor.values()].sort((a, b) => b.count - a.count).slice(0, 6);

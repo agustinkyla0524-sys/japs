@@ -593,13 +593,26 @@ export class ConductorRemittancesPage implements OnInit {
     this.manualEntries.set(entries);
   }
 
+  /** Strips everything but digits (and one decimal point when decimals are allowed), caps the
+   *  digit counts, and writes the cleaned text back into the field as the user types. */
+  private cleanNumberInput(e: Event, maxIntDigits: number, maxDecimals = 0): string {
+    const input = e.target as HTMLInputElement;
+    const [intPart = '', ...rest] = input.value.replace(/[^\d.]/g, '').split('.');
+    let text = intPart.slice(0, maxIntDigits);
+    if (maxDecimals > 0 && rest.length) text += '.' + rest.join('').slice(0, maxDecimals);
+    if (input.value !== text) input.value = text;
+    return text;
+  }
+
+  /** Passengers per category: whole numbers, 2 digits at most (0–99). */
   updateManualCount(tripId: number, category: string, e: Event): void {
-    const value = Math.max(0, Math.floor(Number((e.target as HTMLInputElement).value) || 0));
+    const value = Number(this.cleanNumberInput(e, 2)) || 0;
     this.patchManual(tripId, (m) => ({ ...m, counts: { ...m.counts, [category]: value } }));
   }
 
+  /** Cash collected: 6 digits at most before the decimal point (up to ₱999,999.99). */
   updateManualCollection(tripId: number, e: Event): void {
-    const value = Math.max(0, Number((e.target as HTMLInputElement).value) || 0);
+    const value = Number(this.cleanNumberInput(e, 6, 2)) || 0;
     this.patchManual(tripId, (m) => ({ ...m, collection: value }));
     this.autoCalculateCommissions();
   }
